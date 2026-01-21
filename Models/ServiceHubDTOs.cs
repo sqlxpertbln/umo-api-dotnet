@@ -331,4 +331,43 @@ namespace UMOApi.Models
         public string Domain { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
     }
+
+    // ==================== SMS NOTIFICATION DTOs ====================
+    
+    public class SmsNotificationResultDto
+    {
+        public bool Success { get; set; }
+        public string? Message { get; set; }
+        public int AlertId { get; set; }
+        public int ClientId { get; set; }
+        public string? AlertType { get; set; }
+        public DateTime Timestamp { get; set; }
+        public int TotalContacts { get; set; }
+        public int SuccessfulNotifications { get; set; }
+        public List<NotifiedContactDto> NotifiedContacts { get; set; } = new();
+    }
+    
+    public class NotifiedContactDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string Relationship { get; set; } = string.Empty;
+        public bool Success { get; set; }
+        public DateTime SentAt { get; set; }
+        public string? Error { get; set; }
+    }
+    
+    public class SendSmsDto
+    {
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+    }
+    
+    public class SmsSendResultDto
+    {
+        public bool Success { get; set; }
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public DateTime SentAt { get; set; }
+    }
 }

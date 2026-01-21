@@ -102,6 +102,12 @@ namespace UMOApi.Models
         
         public bool HasKey { get; set; } = false; // Hat Schlüssel zur Wohnung
         
+        public bool NotifyBySms { get; set; } = true; // Bei Notruf per SMS benachrichtigen
+        
+        public bool NotifyByCall { get; set; } = false; // Bei Notruf anrufen
+        
+        public bool NotifyByEmail { get; set; } = false; // Bei Notruf per E-Mail benachrichtigen
+        
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
     

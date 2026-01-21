@@ -275,6 +275,12 @@ namespace UMOApi.Controllers
             _context.EmergencyAlerts.Add(alert);
             await _context.SaveChangesAsync();
 
+            // Automatische SMS-Benachrichtigung an Notfallkontakte
+            if (client != null)
+            {
+                _ = Task.Run(async () => await NotifyEmergencyContactsBySmsAsync(alert.Id, client.Id, alert.AlertType));
+            }
+
             return CreatedAtAction(nameof(GetAlertDetail), new { id = alert.Id }, new AlertSummaryDto
             {
                 Id = alert.Id,
@@ -285,6 +291,185 @@ namespace UMOApi.Controllers
                 AlertTime = alert.AlertTime,
                 TimeAgo = "Gerade eben"
             });
+        }
+
+        // ==================== SMS BENACHRICHTIGUNG ====================
+
+        /// <summary>
+        /// Benachrichtigt alle Notfallkontakte eines Klienten per SMS
+        /// </summary>
+        /// <param name="alertId">ID des Alarms</param>
+        /// <param name="clientId">ID des Klienten (optional, wenn nicht angegeben wird aus Alert gelesen)</param>
+        /// <returns>Ergebnis der SMS-Benachrichtigung</returns>
+        [HttpPost("alerts/{alertId}/notify-contacts")]
+        public async Task<ActionResult<SmsNotificationResultDto>> NotifyContactsBySms(int alertId, [FromQuery] int? clientId = null)
+        {
+            var alert = await _context.EmergencyAlerts
+                .Include(a => a.Client)
+                .FirstOrDefaultAsync(a => a.Id == alertId);
+
+            if (alert == null)
+                return NotFound("Alarm nicht gefunden");
+
+            var targetClientId = clientId ?? alert.ClientId;
+            if (!targetClientId.HasValue)
+                return BadRequest("Kein Klient mit diesem Alarm verknüpft");
+
+            var result = await NotifyEmergencyContactsBySmsAsync(alertId, targetClientId.Value, alert.AlertType);
+            
+            // Alarm aktualisieren
+            alert.ContactsNotified = result.Success;
+            alert.Notes = string.IsNullOrEmpty(alert.Notes)
+                ? $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm}] SMS an {result.SuccessfulNotifications} Kontakte gesendet"
+                : $"{alert.Notes}\n[{DateTime.UtcNow:yyyy-MM-dd HH:mm}] SMS an {result.SuccessfulNotifications} Kontakte gesendet";
+            await _context.SaveChangesAsync();
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Sendet eine manuelle SMS an einen spezifischen Kontakt
+        /// </summary>
+        [HttpPost("sms/send")]
+        public async Task<ActionResult<SmsSendResultDto>> SendSms([FromBody] SendSmsDto dto)
+        {
+            if (string.IsNullOrEmpty(dto.PhoneNumber) || string.IsNullOrEmpty(dto.Message))
+                return BadRequest("Telefonnummer und Nachricht sind erforderlich");
+
+            var success = await _sipgateService.SendSmsAsync("s0", dto.PhoneNumber, dto.Message);
+
+            return Ok(new SmsSendResultDto
+            {
+                Success = success,
+                PhoneNumber = dto.PhoneNumber,
+                Message = dto.Message,
+                SentAt = DateTime.UtcNow
+            });
+        }
+
+        /// <summary>
+        /// Ruft alle Notfallkontakte eines Klienten ab
+        /// </summary>
+        [HttpGet("clients/{clientId}/emergency-contacts")]
+        public async Task<ActionResult<List<EmergencyContactDto>>> GetClientEmergencyContacts(int clientId)
+        {
+            var contacts = await _context.EmergencyContacts
+                .Where(c => c.ClientId == clientId)
+                .OrderBy(c => c.Priority)
+                .ToListAsync();
+
+            return Ok(contacts.Select(c => new EmergencyContactDto
+            {
+                Id = c.Id,
+                FirstName = c.FirstName,
+                LastName = c.LastName,
+                Relationship = c.Relationship,
+                PhoneNumber = c.PhoneNumber,
+                MobileNumber = c.MobileNumber,
+                Email = c.Email,
+                Priority = c.Priority,
+                IsAvailable24h = c.IsAvailable24h,
+                HasKey = c.HasKey,
+                Notes = c.Notes
+            }).ToList());
+        }
+
+        /// <summary>
+        /// Interne Methode zur SMS-Benachrichtigung
+        /// </summary>
+        private async Task<SmsNotificationResultDto> NotifyEmergencyContactsBySmsAsync(int alertId, int clientId, string alertType)
+        {
+            var result = new SmsNotificationResultDto
+            {
+                AlertId = alertId,
+                ClientId = clientId,
+                AlertType = alertType,
+                Timestamp = DateTime.UtcNow,
+                NotifiedContacts = new List<NotifiedContactDto>()
+            };
+
+            try
+            {
+                // Klient und Kontakte laden
+                var client = await _context.Clients.FindAsync(clientId);
+                if (client == null)
+                {
+                    result.Success = false;
+                    result.Message = "Klient nicht gefunden";
+                    return result;
+                }
+
+                var contacts = await _context.EmergencyContacts
+                    .Where(c => c.ClientId == clientId && c.NotifyBySms)
+                    .OrderBy(c => c.Priority)
+                    .ToListAsync();
+
+                if (!contacts.Any())
+                {
+                    result.Success = true;
+                    result.Message = "Keine SMS-Kontakte hinterlegt";
+                    return result;
+                }
+
+                var clientName = $"{client.FirstName} {client.LastName}";
+                var alertTypeText = GetAlertTypeText(alertType);
+                var alertMessage = $"Bitte kontaktieren Sie die Notrufzentrale oder den Klienten.";
+
+                foreach (var contact in contacts)
+                {
+                    var phoneNumber = !string.IsNullOrEmpty(contact.MobileNumber) 
+                        ? contact.MobileNumber 
+                        : contact.PhoneNumber;
+
+                    if (string.IsNullOrEmpty(phoneNumber))
+                        continue;
+
+                    var smsMessage = $"⚠️ {alertTypeText}\n" +
+                                    $"Klient: {clientName}\n" +
+                                    $"{alertMessage}\n" +
+                                    $"UMO Hausnotruf";
+
+                    var success = await _sipgateService.SendSmsAsync("s0", phoneNumber, smsMessage);
+
+                    result.NotifiedContacts.Add(new NotifiedContactDto
+                    {
+                        Name = $"{contact.FirstName} {contact.LastName}",
+                        PhoneNumber = phoneNumber,
+                        Relationship = contact.Relationship,
+                        Success = success,
+                        SentAt = DateTime.UtcNow
+                    });
+
+                    // Kurze Pause zwischen SMS
+                    await Task.Delay(500);
+                }
+
+                result.TotalContacts = contacts.Count;
+                result.SuccessfulNotifications = result.NotifiedContacts.Count(c => c.Success);
+                result.Success = result.SuccessfulNotifications > 0;
+                result.Message = $"{result.SuccessfulNotifications} von {result.TotalContacts} Kontakten erfolgreich benachrichtigt.";
+            }
+            catch (Exception ex)
+            {
+                result.Success = false;
+                result.Message = $"Fehler bei SMS-Benachrichtigung: {ex.Message}";
+            }
+
+            return result;
+        }
+
+        private string GetAlertTypeText(string alertType)
+        {
+            return alertType switch
+            {
+                "FallDetection" => "STURZERKENNUNG",
+                "ManualAlert" => "MANUELLER NOTRUF",
+                "InactivityAlert" => "INAKTIVITÄTSALARM",
+                "LowBattery" => "BATTERIE NIEDRIG",
+                "Panic" => "PANIK-ALARM",
+                "Medical" => "MEDIZINISCHER NOTFALL",
+                _ => "NOTRUF"
+            };
         }
 
         /// <summary>

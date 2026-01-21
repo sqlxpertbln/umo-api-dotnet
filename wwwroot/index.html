@@ -3,136 +3,677 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UMO API Client</title>
+    <title>UMO System - Integrierte Verwaltung</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SIP.js for WebRTC telephony -->
+    <script src="https://cdn.jsdelivr.net/npm/sip.js@0.21.2/lib/platform/web/index.min.js"></script>
     <style>
         :root {
-            --primary-color: #0d6efd;
-            --sidebar-width: 250px;
+            --primary-color: #1e3a5f;
+            --secondary-color: #2c5282;
+            --accent-color: #667eea;
+            --danger-color: #dc3545;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --sidebar-width: 260px;
+            --softphone-width: 300px;
         }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
         }
+        
+        /* Sidebar */
         .sidebar {
             position: fixed;
             top: 0;
             left: 0;
             height: 100vh;
             width: var(--sidebar-width);
-            background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%);
-            padding-top: 20px;
+            background: linear-gradient(180deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            padding: 0;
             z-index: 1000;
+            overflow-y: auto;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
         }
+        
+        .sidebar-header {
+            padding: 20px;
+            text-align: center;
+            background: rgba(0,0,0,0.1);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .sidebar-header h4 {
+            color: #fff;
+            margin: 0;
+            font-weight: 700;
+            font-size: 1.4rem;
+        }
+        
+        .sidebar-header small {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.8rem;
+        }
+        
+        .nav-section {
+            padding: 15px 20px 8px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.5);
+            letter-spacing: 1.5px;
+            font-weight: 600;
+        }
+        
         .sidebar .nav-link {
             color: rgba(255, 255, 255, 0.8);
             padding: 12px 20px;
             margin: 2px 10px;
             border-radius: 8px;
             transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
-        .sidebar .nav-link:hover, .sidebar .nav-link.active {
-            background-color: rgba(255, 255, 255, 0.15);
+        
+        .sidebar .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
             color: #fff;
+            transform: translateX(5px);
         }
+        
+        .sidebar .nav-link.active {
+            background: linear-gradient(135deg, var(--accent-color) 0%, #764ba2 100%);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
         .sidebar .nav-link i {
-            margin-right: 10px;
             width: 20px;
+            font-size: 1.1rem;
         }
+        
+        .sidebar .nav-link .badge {
+            margin-left: auto;
+        }
+        
+        /* Service Hub Navigation - Special Styling */
+        .nav-link.service-hub-link {
+            background: linear-gradient(135deg, var(--danger-color) 0%, #c82333 100%);
+            color: #fff !important;
+            margin-top: 10px;
+        }
+        
+        .nav-link.service-hub-link:hover {
+            box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+        }
+        
+        .nav-link.service-hub-link.active {
+            background: linear-gradient(135deg, #b02a37 0%, #a71d2a 100%);
+        }
+        
+        /* Main Content */
         .main-content {
             margin-left: var(--sidebar-width);
-            padding: 20px;
+            margin-right: var(--softphone-width);
+            padding: 20px 30px;
             min-height: 100vh;
+            transition: margin-right 0.3s ease;
         }
-        .brand {
-            color: #fff;
-            font-size: 1.5rem;
-            font-weight: bold;
-            padding: 10px 20px;
-            margin-bottom: 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        
+        .main-content.softphone-hidden {
+            margin-right: 0;
         }
+        
+        /* Header Bar */
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .header-bar h2 {
+            margin: 0;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .header-bar h2 i {
+            margin-right: 10px;
+            color: var(--accent-color);
+        }
+        
+        /* Cards */
         .card {
             border: none;
             border-radius: 12px;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
             margin-bottom: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.12);
+        }
+        
         .card-header {
             background-color: #fff;
             border-bottom: 1px solid #eee;
             font-weight: 600;
             padding: 15px 20px;
             border-radius: 12px 12px 0 0 !important;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+        
+        .card-header i {
+            color: var(--accent-color);
+            margin-right: 8px;
+        }
+        
+        /* Stats Cards */
+        .stats-card {
+            border-radius: 12px;
+            padding: 25px;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stats-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 200%;
+            background: rgba(255,255,255,0.1);
+            transform: rotate(30deg);
+        }
+        
+        .stats-card.purple { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .stats-card.green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+        .stats-card.orange { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .stats-card.blue { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .stats-card.red { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); }
+        .stats-card.yellow { background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%); }
+        
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .stats-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Tables */
         .table {
             margin-bottom: 0;
         }
+        
         .table th {
             border-top: none;
             font-weight: 600;
             color: #495057;
             background-color: #f8f9fa;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
+        
         .table td {
             vertical-align: middle;
+            padding: 12px 15px;
         }
-        .btn-action {
-            padding: 5px 10px;
-            font-size: 0.85rem;
-        }
+        
+        /* Status Badges */
         .status-badge {
             padding: 5px 12px;
             border-radius: 20px;
             font-size: 0.8rem;
             font-weight: 500;
         }
-        .status-active {
-            background-color: #d4edda;
-            color: #155724;
+        
+        .status-active { background-color: #d4edda; color: #155724; }
+        .status-inactive { background-color: #f8d7da; color: #721c24; }
+        .status-warning { background-color: #fff3cd; color: #856404; }
+        
+        /* Buttons */
+        .btn-action {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            border-radius: 6px;
         }
-        .status-inactive {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
+        
+        /* Modal */
         .modal-header {
-            background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
             color: #fff;
             border-radius: 0;
         }
+        
+        .modal-header.danger {
+            background: linear-gradient(135deg, var(--danger-color) 0%, #c82333 100%);
+        }
+        
         .modal-header .btn-close {
             filter: brightness(0) invert(1);
         }
-        .form-label {
-            font-weight: 500;
-            color: #495057;
+        
+        /* Softphone Panel */
+        .softphone-panel {
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: var(--softphone-width);
+            height: 100vh;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            box-shadow: -4px 0 20px rgba(0,0,0,0.2);
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
         }
-        .pagination {
-            margin-bottom: 0;
+        
+        .softphone-panel.hidden {
+            transform: translateX(100%);
         }
-        .search-box {
-            max-width: 300px;
-        }
-        .stats-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        
+        .softphone-header {
+            padding: 15px;
+            text-align: center;
+            background: linear-gradient(135deg, #28a745 0%, #218838 100%);
             color: #fff;
-            border-radius: 12px;
+        }
+        
+        .softphone-header.oncall {
+            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+            color: #000;
+        }
+        
+        .softphone-header.offline {
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+        }
+        
+        .softphone-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #fff;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator.offline { 
+            background: #dc3545; 
+            animation: none; 
+        }
+        
+        .status-indicator.oncall { 
+            background: #ffc107; 
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .softphone-body {
+            flex: 1;
             padding: 20px;
+            color: #fff;
+            overflow-y: auto;
         }
-        .stats-card.green {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        
+        .dial-display {
+            background: #0a0a1a;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+            font-family: monospace;
+            min-height: 50px;
+            color: #4facfe;
         }
-        .stats-card.orange {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        
+        .dial-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
         }
-        .stats-card.blue {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        
+        .dial-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 50%;
+            width: 55px;
+            height: 55px;
+            color: #fff;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 0 auto;
         }
-        .stats-number {
-            font-size: 2.5rem;
-            font-weight: bold;
+        
+        .dial-btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.1);
         }
+        
+        .call-actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 15px;
+        }
+        
+        .call-btn {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            border: none;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .call-btn.answer { background: #28a745; color: white; }
+        .call-btn.hangup { background: #dc3545; color: white; }
+        .call-btn.hold { background: #ffc107; color: black; }
+        .call-btn.mute { background: #6c757d; color: white; }
+        
+        .call-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        .softphone-toggle {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--danger-color) 0%, #c82333 100%);
+            color: #fff;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(220, 53, 69, 0.4);
+            z-index: 1002;
+            display: none;
+            transition: all 0.3s;
+        }
+        
+        .softphone-toggle:hover {
+            transform: scale(1.1);
+        }
+        
+        .softphone-toggle.visible {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Alert Cards (Service Hub) */
+        .alert-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .alert-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        
+        .alert-card.critical { border-left-color: #dc3545; background: #fff5f5; }
+        .alert-card.high { border-left-color: #fd7e14; background: #fff8f0; }
+        .alert-card.medium { border-left-color: #ffc107; background: #fffdf0; }
+        .alert-card.low { border-left-color: #28a745; background: #f0fff4; }
+        
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .alert-type {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .alert-badge {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .badge-critical { background: #dc3545; }
+        .badge-high { background: #fd7e14; }
+        .badge-medium { background: #ffc107; color: #000; }
+        .badge-low { background: #28a745; }
+        
+        .alert-client {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .alert-info {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        
+        .alert-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        /* Service Hub Dark Theme Sections */
+        .service-hub-section {
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            margin: -20px -30px;
+            padding: 20px 30px;
+            min-height: calc(100vh - 40px);
+            color: #fff;
+        }
+        
+        .service-hub-section .card {
+            background: rgba(15, 52, 96, 0.8);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .service-hub-section .card-header {
+            background: rgba(0,0,0,0.2);
+            color: #fff;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .service-hub-section .table {
+            color: #fff;
+        }
+        
+        .service-hub-section .table th {
+            background: rgba(0,0,0,0.3);
+            color: #adb5bd;
+        }
+        
+        .service-hub-section .table td {
+            border-color: rgba(255,255,255,0.1);
+        }
+        
+        .service-hub-section .alert-card {
+            background: rgba(15, 52, 96, 0.9);
+            color: #fff;
+        }
+        
+        .service-hub-section .alert-card .alert-type,
+        .service-hub-section .alert-card .alert-client {
+            color: #fff;
+        }
+        
+        .service-hub-section .alert-card .alert-info {
+            color: #adb5bd;
+        }
+        
+        /* Dispatcher Cards */
+        .dispatcher-card {
+            background: rgba(15, 52, 96, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .dispatcher-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .dispatcher-info {
+            flex: 1;
+        }
+        
+        .dispatcher-name {
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        
+        .dispatcher-status {
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #adb5bd;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .status-dot.online { background: #28a745; }
+        .status-dot.oncall { background: #ffc107; }
+        .status-dot.break { background: #fd7e14; }
+        .status-dot.offline { background: #6c757d; }
+        
+        /* Recent Calls Panel in Softphone */
+        .recent-calls {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .recent-calls h6 {
+            color: #adb5bd;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        
+        .recent-call-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .recent-call-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .recent-call-item i {
+            font-size: 1rem;
+        }
+        
+        .recent-call-item .call-number {
+            flex: 1;
+            font-size: 0.9rem;
+        }
+        
+        .recent-call-item .call-time {
+            font-size: 0.75rem;
+            color: #6c757d;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1400px) {
+            .main-content {
+                margin-right: 0;
+            }
+            .softphone-panel {
+                transform: translateX(100%);
+            }
+            .softphone-panel.visible {
+                transform: translateX(0);
+            }
+            .softphone-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+        }
+        
+        /* Loading Spinner */
         .loading-spinner {
             display: none;
             position: fixed;
@@ -141,30 +682,86 @@
             transform: translate(-50%, -50%);
             z-index: 9999;
         }
+        
+        /* Toast Container */
         .toast-container {
             position: fixed;
             top: 20px;
-            right: 20px;
+            right: 340px;
             z-index: 9999;
         }
-        .detail-label {
-            font-weight: 600;
-            color: #6c757d;
-            font-size: 0.85rem;
-            text-transform: uppercase;
+        
+        @media (max-width: 1400px) {
+            .toast-container {
+                right: 20px;
+            }
         }
-        .detail-value {
-            font-size: 1rem;
-            color: #212529;
+        
+        /* Incoming Call Modal */
+        .incoming-call-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        
+        .incoming-call-overlay.visible {
+            display: flex;
+        }
+        
+        .incoming-call-box {
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            color: #fff;
+            animation: pulse-border 2s infinite;
+        }
+        
+        @keyframes pulse-border {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+            50% { box-shadow: 0 0 0 20px rgba(40, 167, 69, 0); }
+        }
+        
+        .incoming-call-box h4 {
+            margin-bottom: 10px;
+        }
+        
+        .incoming-call-box .caller-number {
+            font-size: 1.5rem;
+            font-family: monospace;
+            margin-bottom: 30px;
+            color: #4facfe;
+        }
+        
+        .incoming-call-actions {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+        }
+        
+        .incoming-call-actions .call-btn {
+            width: 70px;
+            height: 70px;
+            font-size: 1.8rem;
         }
     </style>
 </head>
 <body>
     <!-- Sidebar -->
     <nav class="sidebar">
-        <div class="brand">
-            <i class="bi bi-hospital"></i> UMO System
+        <div class="sidebar-header">
+            <h4><i class="bi bi-hospital"></i> UMO System</h4>
+            <small>Integrierte Verwaltung</small>
         </div>
+        
+        <div class="nav-section">Stammdaten</div>
         <ul class="nav flex-column">
             <li class="nav-item">
                 <a class="nav-link active" href="#" data-section="dashboard">
@@ -196,22 +793,55 @@
                     <i class="bi bi-gear"></i> Systemdaten
                 </a>
             </li>
-            <li class="nav-item mt-3">
-                <a class="nav-link" href="/business-reports.html" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff;">
+        </ul>
+        
+        <div class="nav-section">Service Hub</div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link service-hub-link" href="#" data-section="serviceHub">
+                    <i class="bi bi-telephone-fill"></i> Notruf-Leitstelle
+                    <span class="badge bg-danger" id="alertBadge" style="display: none;">0</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-section="emergencyDevices">
+                    <i class="bi bi-smartwatch"></i> Notrufgeräte
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-section="emergencyContacts">
+                    <i class="bi bi-person-lines-fill"></i> Notfallkontakte
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-section="dispatchers">
+                    <i class="bi bi-headset"></i> Disponenten
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-section="callHistory">
+                    <i class="bi bi-clock-history"></i> Anrufprotokoll
+                </a>
+            </li>
+        </ul>
+        
+        <div class="nav-section">Berichte</div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" href="/business-reports.html">
                     <i class="bi bi-bar-chart-line"></i> Business Reports
                 </a>
             </li>
-            <li class="nav-item mt-1">
-                <a class="nav-link" href="/service-hub.html" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: #fff;">
-                    <i class="bi bi-telephone-fill"></i> Service Hub
-                </a>
-            </li>
-            <li class="nav-item mt-1">
-                <a class="nav-link" href="/reports.html" style="background: rgba(255,255,255,0.1); color: #fff;">
+            <li class="nav-item">
+                <a class="nav-link" href="/reports.html">
                     <i class="bi bi-graph-up-arrow"></i> Klassische Reports
                 </a>
             </li>
-            <li class="nav-item mt-2">
+        </ul>
+        
+        <div class="nav-section">System</div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
                 <a class="nav-link" href="/swagger" target="_blank">
                     <i class="bi bi-code-slash"></i> API Dokumentation
                 </a>
@@ -223,38 +853,73 @@
     <main class="main-content">
         <!-- Dashboard Section -->
         <section id="dashboard-section" class="content-section">
-            <h2 class="mb-4">Dashboard</h2>
+            <div class="header-bar">
+                <h2><i class="bi bi-speedometer2"></i> Dashboard</h2>
+                <div>
+                    <span class="badge bg-success"><i class="bi bi-circle-fill"></i> System Online</span>
+                    <span class="badge bg-secondary ms-2" id="currentTime"></span>
+                </div>
+            </div>
             <div class="row mb-4">
                 <div class="col-md-3">
-                    <div class="stats-card">
+                    <div class="stats-card purple">
                         <div class="stats-number" id="total-clients">0</div>
-                        <div>Klienten</div>
+                        <div class="stats-label">Klienten</div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="stats-card green">
                         <div class="stats-number" id="total-devices">0</div>
-                        <div>Geräte</div>
+                        <div class="stats-label">Geräte</div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="stats-card orange">
                         <div class="stats-number" id="total-direct-providers">0</div>
-                        <div>Direct Provider</div>
+                        <div class="stats-label">Direct Provider</div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="stats-card blue">
                         <div class="stats-number" id="total-professional-providers">0</div>
-                        <div>Professional Provider</div>
+                        <div class="stats-label">Professional Provider</div>
                     </div>
                 </div>
             </div>
+            
+            <!-- Service Hub Quick Stats -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stats-card red">
+                        <div class="stats-number" id="active-alerts">0</div>
+                        <div class="stats-label">Aktive Alarme</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card yellow">
+                        <div class="stats-number" id="active-calls">0</div>
+                        <div class="stats-label">Aktive Anrufe</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card green">
+                        <div class="stats-number" id="online-dispatchers">0</div>
+                        <div class="stats-label">Disponenten Online</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card blue">
+                        <div class="stats-number" id="online-emergency-devices">0</div>
+                        <div class="stats-label">Notrufgeräte Online</div>
+                    </div>
+                </div>
+            </div>
+            
             <div class="row">
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-header">
-                            <i class="bi bi-clock-history"></i> Letzte Klienten
+                            <span><i class="bi bi-clock-history"></i> Letzte Klienten</span>
                         </div>
                         <div class="card-body">
                             <div id="recent-clients-list">Laden...</div>
@@ -264,12 +929,14 @@
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-header">
-                            <i class="bi bi-activity"></i> System Status
+                            <span><i class="bi bi-exclamation-triangle text-danger"></i> Aktuelle Alarme</span>
+                            <a href="#" onclick="showSection('serviceHub'); return false;" class="btn btn-sm btn-outline-danger">Alle anzeigen</a>
                         </div>
-                        <div class="card-body">
-                            <p><strong>API Status:</strong> <span class="badge bg-success">Online</span></p>
-                            <p><strong>Datenbank:</strong> <span class="badge bg-success">SQLite (Integriert)</span></p>
-                            <p><strong>Version:</strong> 1.0.0</p>
+                        <div class="card-body" id="dashboard-alerts">
+                            <div class="text-center text-muted py-3">
+                                <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                                <p class="mb-0 mt-2">Keine aktiven Alarme</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -278,27 +945,31 @@
 
         <!-- Clients Section -->
         <section id="clients-section" class="content-section" style="display: none;">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>Klienten</h2>
+            <div class="header-bar">
+                <h2><i class="bi bi-people"></i> Klienten</h2>
                 <button class="btn btn-primary" onclick="showClientModal()">
                     <i class="bi bi-plus-lg"></i> Neuer Klient
                 </button>
             </div>
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="card-header">
                     <span>Klientenliste</span>
-                    <input type="text" class="form-control search-box" placeholder="Suchen..." id="client-search" onkeyup="searchClients()">
+                    <div class="d-flex gap-2">
+                        <input type="text" class="form-control form-control-sm" id="clientSearch" placeholder="Suchen..." style="width: 200px;">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="loadClients()">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Nr.</th>
+                                    <th>ID</th>
                                     <th>Name</th>
                                     <th>Geburtsdatum</th>
                                     <th>Status</th>
-                                    <th>Vertragsbeginn</th>
                                     <th>Aktionen</th>
                                 </tr>
                             </thead>
@@ -306,33 +977,27 @@
                             </tbody>
                         </table>
                     </div>
-                    <nav class="mt-3">
-                        <ul class="pagination justify-content-center" id="clients-pagination">
-                        </ul>
-                    </nav>
                 </div>
             </div>
         </section>
 
         <!-- Devices Section -->
         <section id="devices-section" class="content-section" style="display: none;">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>Geräte</h2>
+            <div class="header-bar">
+                <h2><i class="bi bi-laptop"></i> Geräte</h2>
                 <button class="btn btn-primary" onclick="showDeviceModal()">
                     <i class="bi bi-plus-lg"></i> Neues Gerät
                 </button>
             </div>
             <div class="card">
-                <div class="card-header">Geräteliste</div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Typ</th>
+                                    <th>ID</th>
                                     <th>Seriennummer</th>
-                                    <th>Hersteller</th>
-                                    <th>Modell</th>
+                                    <th>Typ</th>
                                     <th>Status</th>
                                     <th>Aktionen</th>
                                 </tr>
@@ -347,23 +1012,21 @@
 
         <!-- Direct Providers Section -->
         <section id="directProviders-section" class="content-section" style="display: none;">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>Direct Provider</h2>
+            <div class="header-bar">
+                <h2><i class="bi bi-building"></i> Direct Provider</h2>
                 <button class="btn btn-primary" onclick="showDirectProviderModal()">
                     <i class="bi bi-plus-lg"></i> Neuer Provider
                 </button>
             </div>
             <div class="card">
-                <div class="card-header">Provider-Liste</div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead>
                                 <tr>
+                                    <th>ID</th>
                                     <th>Name</th>
-                                    <th>Kontakt</th>
-                                    <th>Telefon</th>
-                                    <th>E-Mail</th>
+                                    <th>Typ</th>
                                     <th>Status</th>
                                     <th>Aktionen</th>
                                 </tr>
@@ -378,23 +1041,21 @@
 
         <!-- Professional Providers Section -->
         <section id="professionalProviders-section" class="content-section" style="display: none;">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>Professional Provider</h2>
+            <div class="header-bar">
+                <h2><i class="bi bi-person-badge"></i> Professional Provider</h2>
                 <button class="btn btn-primary" onclick="showProfessionalProviderModal()">
                     <i class="bi bi-plus-lg"></i> Neuer Provider
                 </button>
             </div>
             <div class="card">
-                <div class="card-header">Provider-Liste</div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead>
                                 <tr>
+                                    <th>ID</th>
                                     <th>Name</th>
-                                    <th>Fachgebiet</th>
-                                    <th>Telefon</th>
-                                    <th>E-Mail</th>
+                                    <th>Fachrichtung</th>
                                     <th>Status</th>
                                     <th>Aktionen</th>
                                 </tr>
@@ -409,461 +1070,267 @@
 
         <!-- System Entries Section -->
         <section id="systemEntries-section" class="content-section" style="display: none;">
-            <h2 class="mb-4">Systemdaten</h2>
+            <div class="header-bar">
+                <h2><i class="bi bi-gear"></i> Systemdaten</h2>
+            </div>
             <div class="row">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <div class="card">
-                        <div class="card-header">Titel</div>
-                        <div class="card-body" id="titles-list"></div>
+                        <div class="card-header"><i class="bi bi-tags"></i> Tarife</div>
+                        <div class="card-body" id="tarifs-list">Laden...</div>
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <div class="card">
-                        <div class="card-header">Präfixe</div>
-                        <div class="card-body" id="prefixes-list"></div>
+                        <div class="card-header"><i class="bi bi-translate"></i> Sprachen</div>
+                        <div class="card-body" id="languages-list">Laden...</div>
                     </div>
                 </div>
-            </div>
-            <div class="row mt-3">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <div class="card">
-                        <div class="card-header">Status</div>
-                        <div class="card-body" id="statuses-list"></div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header">Familienstand</div>
-                        <div class="card-body" id="marital-statuses-list"></div>
+                        <div class="card-header"><i class="bi bi-heart-pulse"></i> Krankheiten</div>
+                        <div class="card-body" id="diseases-list">Laden...</div>
                     </div>
                 </div>
             </div>
-            <div class="row mt-3">
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header">Rechnungsmethoden</div>
-                        <div class="card-body" id="invoice-methods-list"></div>
+        </section>
+
+        <!-- SERVICE HUB SECTION -->
+        <section id="serviceHub-section" class="content-section" style="display: none;">
+            <div class="service-hub-section">
+                <div class="header-bar" style="border-bottom-color: rgba(255,255,255,0.1);">
+                    <h2 style="color: #fff;"><i class="bi bi-telephone-fill text-danger"></i> Notruf-Leitstelle</h2>
+                    <div>
+                        <span class="badge bg-success"><i class="bi bi-circle-fill"></i> System Online</span>
+                        <span class="badge bg-secondary ms-2" id="serviceHubTime"></span>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header">Prioritäten</div>
-                        <div class="card-body" id="priorities-list"></div>
+                
+                <!-- Stats Row -->
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="stats-card red">
+                            <div class="stats-number" id="sh-active-alerts">0</div>
+                            <div class="stats-label">Aktive Alarme</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card yellow">
+                            <div class="stats-number" id="sh-active-calls">0</div>
+                            <div class="stats-label">Aktive Anrufe</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card green">
+                            <div class="stats-number" id="sh-online-dispatchers">0</div>
+                            <div class="stats-label">Disponenten Online</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card blue">
+                            <div class="stats-number" id="sh-online-devices">0</div>
+                            <div class="stats-label">Geräte Online</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row g-4">
+                    <!-- Active Alerts -->
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <span><i class="bi bi-exclamation-triangle text-danger"></i> Aktuelle Alarme</span>
+                                <button class="btn btn-sm btn-outline-light" onclick="loadServiceHubDashboard()">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                            </div>
+                            <div class="card-body" id="sh-alerts-list">
+                                <!-- Alerts will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Dispatcher Status -->
+                    <div class="col-lg-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <span><i class="bi bi-headset text-success"></i> Disponenten</span>
+                            </div>
+                            <div class="card-body" id="sh-dispatchers-list">
+                                <!-- Dispatchers will be loaded here -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="row mt-3">
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header">Sprachen</div>
-                        <div class="card-body" id="languages-list"></div>
+        </section>
+
+        <!-- Emergency Devices Section -->
+        <section id="emergencyDevices-section" class="content-section" style="display: none;">
+            <div class="service-hub-section">
+                <div class="header-bar" style="border-bottom-color: rgba(255,255,255,0.1);">
+                    <h2 style="color: #fff;"><i class="bi bi-smartwatch"></i> Notrufgeräte</h2>
+                    <button class="btn btn-primary" onclick="showEmergencyDeviceModal()">
+                        <i class="bi bi-plus-lg"></i> Gerät hinzufügen
+                    </button>
+                </div>
+                <div class="row" id="emergency-devices-grid">
+                    <!-- Devices will be loaded here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Emergency Contacts Section -->
+        <section id="emergencyContacts-section" class="content-section" style="display: none;">
+            <div class="service-hub-section">
+                <div class="header-bar" style="border-bottom-color: rgba(255,255,255,0.1);">
+                    <h2 style="color: #fff;"><i class="bi bi-person-lines-fill"></i> Notfallkontakte</h2>
+                    <button class="btn btn-primary" onclick="showEmergencyContactModal()">
+                        <i class="bi bi-plus-lg"></i> Kontakt hinzufügen
+                    </button>
+                </div>
+                <div class="card">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Klient</th>
+                                        <th>Kontaktname</th>
+                                        <th>Beziehung</th>
+                                        <th>Telefon</th>
+                                        <th>Priorität</th>
+                                        <th>Benachrichtigung</th>
+                                        <th>Aktionen</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="emergency-contacts-table">
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header">Tarife</div>
-                        <div class="card-body" id="tarifs-list"></div>
+            </div>
+        </section>
+
+        <!-- Dispatchers Section -->
+        <section id="dispatchers-section" class="content-section" style="display: none;">
+            <div class="service-hub-section">
+                <div class="header-bar" style="border-bottom-color: rgba(255,255,255,0.1);">
+                    <h2 style="color: #fff;"><i class="bi bi-headset"></i> Disponenten</h2>
+                    <button class="btn btn-primary" onclick="showDispatcherModal()">
+                        <i class="bi bi-plus-lg"></i> Disponent hinzufügen
+                    </button>
+                </div>
+                <div class="row" id="dispatchers-grid">
+                    <!-- Dispatchers will be loaded here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Call History Section -->
+        <section id="callHistory-section" class="content-section" style="display: none;">
+            <div class="service-hub-section">
+                <div class="header-bar" style="border-bottom-color: rgba(255,255,255,0.1);">
+                    <h2 style="color: #fff;"><i class="bi bi-clock-history"></i> Anrufprotokoll</h2>
+                </div>
+                <div class="card">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Zeit</th>
+                                        <th>Richtung</th>
+                                        <th>Rufnummer</th>
+                                        <th>Klient</th>
+                                        <th>Disponent</th>
+                                        <th>Dauer</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="call-history-table">
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
     </main>
 
-    <!-- Client Modal -->
-    <div class="modal fade" id="clientModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="clientModalTitle">Neuer Klient</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="clientForm">
-                        <input type="hidden" id="clientId">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Titel</label>
-                                    <select class="form-select" id="clientTitel"></select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Präfix</label>
-                                    <select class="form-select" id="clientPrefix"></select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Vorname *</label>
-                                    <input type="text" class="form-control" id="clientFirstName" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Nachname *</label>
-                                    <input type="text" class="form-control" id="clientLastName" required>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label">Geschlecht</label>
-                                    <select class="form-select" id="clientSex">
-                                        <option value="">-- Auswählen --</option>
-                                        <option value="M">Männlich</option>
-                                        <option value="F">Weiblich</option>
-                                        <option value="D">Divers</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label">Geburtsdatum</label>
-                                    <input type="date" class="form-control" id="clientBirthDay">
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label">Kundennummer</label>
-                                    <input type="number" class="form-control" id="clientNummer">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Status</label>
-                                    <select class="form-select" id="clientStatus"></select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Familienstand</label>
-                                    <select class="form-select" id="clientMaritalStatus"></select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Vertragsbeginn</label>
-                                    <input type="date" class="form-control" id="clientStartContractDate">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Policennummer</label>
-                                    <input type="text" class="form-control" id="clientPolicyNumber">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Sprache</label>
-                                    <select class="form-select" id="clientLanguage"></select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Priorität</label>
-                                    <select class="form-select" id="clientPriority"></select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Notiz</label>
-                            <textarea class="form-control" id="clientNote" rows="3"></textarea>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
-                    <button type="button" class="btn btn-primary" onclick="saveClient()">Speichern</button>
+    <!-- Softphone Panel -->
+    <div class="softphone-panel" id="softphonePanel">
+        <div class="softphone-header" id="softphoneHeader">
+            <div class="softphone-status">
+                <div class="status-indicator" id="phoneStatus"></div>
+                <span id="phoneStatusText">Verbinde...</span>
+            </div>
+        </div>
+        <div class="softphone-body">
+            <div class="dial-display" id="dialDisplay"></div>
+            
+            <div class="dial-pad">
+                <button class="dial-btn" onclick="dialDigit('1')">1</button>
+                <button class="dial-btn" onclick="dialDigit('2')">2</button>
+                <button class="dial-btn" onclick="dialDigit('3')">3</button>
+                <button class="dial-btn" onclick="dialDigit('4')">4</button>
+                <button class="dial-btn" onclick="dialDigit('5')">5</button>
+                <button class="dial-btn" onclick="dialDigit('6')">6</button>
+                <button class="dial-btn" onclick="dialDigit('7')">7</button>
+                <button class="dial-btn" onclick="dialDigit('8')">8</button>
+                <button class="dial-btn" onclick="dialDigit('9')">9</button>
+                <button class="dial-btn" onclick="dialDigit('*')">*</button>
+                <button class="dial-btn" onclick="dialDigit('0')">0</button>
+                <button class="dial-btn" onclick="dialDigit('#')">#</button>
+            </div>
+            
+            <div class="call-actions">
+                <button class="call-btn mute" onclick="toggleMute()" id="muteBtn" title="Stummschalten">
+                    <i class="bi bi-mic"></i>
+                </button>
+                <button class="call-btn answer" onclick="makeCall()" id="callBtn" title="Anrufen">
+                    <i class="bi bi-telephone"></i>
+                </button>
+                <button class="call-btn hangup" onclick="hangupCall()" id="hangupBtn" title="Auflegen" style="display: none;">
+                    <i class="bi bi-telephone-x"></i>
+                </button>
+                <button class="call-btn hold" onclick="toggleHold()" id="holdBtn" title="Halten">
+                    <i class="bi bi-pause"></i>
+                </button>
+            </div>
+            
+            <div class="text-center mt-3">
+                <small class="text-muted" id="callDuration"></small>
+            </div>
+            
+            <!-- Recent Calls -->
+            <div class="recent-calls">
+                <h6>Letzte Anrufe</h6>
+                <div id="recentCallsList">
+                    <!-- Recent calls will be loaded here -->
                 </div>
             </div>
         </div>
     </div>
+    
+    <!-- Softphone Toggle Button (for smaller screens) -->
+    <button class="softphone-toggle" id="softphoneToggle" onclick="toggleSoftphone()">
+        <i class="bi bi-telephone-fill"></i>
+    </button>
 
-    <!-- Client Details Modal -->
-    <div class="modal fade" id="clientDetailsModal" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Klientendetails</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body" id="clientDetailsContent">
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Device Modal -->
-    <div class="modal fade" id="deviceModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="deviceModalTitle">Neues Gerät</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="deviceForm">
-                        <input type="hidden" id="deviceId">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Gerätetyp *</label>
-                                    <input type="text" class="form-control" id="deviceType" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Seriennummer *</label>
-                                    <input type="text" class="form-control" id="deviceSerialNumber" required>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Hersteller</label>
-                                    <input type="text" class="form-control" id="deviceManufacturer">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Modell</label>
-                                    <input type="text" class="form-control" id="deviceModel">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Status</label>
-                                    <select class="form-select" id="deviceStatus">
-                                        <option value="Verfügbar">Verfügbar</option>
-                                        <option value="In Benutzung">In Benutzung</option>
-                                        <option value="In Reparatur">In Reparatur</option>
-                                        <option value="Ausgemustert">Ausgemustert</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Kaufdatum</label>
-                                    <input type="date" class="form-control" id="devicePurchaseDate">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Beschreibung</label>
-                            <textarea class="form-control" id="deviceDescription" rows="3"></textarea>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
-                    <button type="button" class="btn btn-primary" onclick="saveDevice()">Speichern</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Direct Provider Modal -->
-    <div class="modal fade" id="directProviderModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="directProviderModalTitle">Neuer Direct Provider</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="directProviderForm">
-                        <input type="hidden" id="directProviderId">
-                        <div class="row">
-                            <div class="col-md-12">
-                                <div class="mb-3">
-                                    <label class="form-label">Firmenname *</label>
-                                    <input type="text" class="form-control" id="directProviderName" required>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Vorname</label>
-                                    <input type="text" class="form-control" id="directProviderFirstName">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Nachname</label>
-                                    <input type="text" class="form-control" id="directProviderLastName">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-8">
-                                <div class="mb-3">
-                                    <label class="form-label">Straße</label>
-                                    <input type="text" class="form-control" id="directProviderStreet">
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label">Hausnummer</label>
-                                    <input type="text" class="form-control" id="directProviderHouseNumber">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label">PLZ</label>
-                                    <input type="text" class="form-control" id="directProviderZipCode">
-                                </div>
-                            </div>
-                            <div class="col-md-8">
-                                <div class="mb-3">
-                                    <label class="form-label">Stadt</label>
-                                    <input type="text" class="form-control" id="directProviderCity">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Telefon</label>
-                                    <input type="tel" class="form-control" id="directProviderPhone">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">E-Mail</label>
-                                    <input type="email" class="form-control" id="directProviderEmail">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Status</label>
-                            <select class="form-select" id="directProviderStatus">
-                                <option value="Aktiv">Aktiv</option>
-                                <option value="Inaktiv">Inaktiv</option>
-                            </select>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
-                    <button type="button" class="btn btn-primary" onclick="saveDirectProvider()">Speichern</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Professional Provider Modal -->
-    <div class="modal fade" id="professionalProviderModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="professionalProviderModalTitle">Neuer Professional Provider</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="professionalProviderForm">
-                        <input type="hidden" id="professionalProviderId">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Vorname *</label>
-                                    <input type="text" class="form-control" id="professionalProviderFirstName" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Nachname *</label>
-                                    <input type="text" class="form-control" id="professionalProviderLastName" required>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Fachgebiet</label>
-                                    <input type="text" class="form-control" id="professionalProviderSpecialty">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Lizenznummer</label>
-                                    <input type="text" class="form-control" id="professionalProviderLicenseNumber">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-8">
-                                <div class="mb-3">
-                                    <label class="form-label">Straße</label>
-                                    <input type="text" class="form-control" id="professionalProviderStreet">
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label">Hausnummer</label>
-                                    <input type="text" class="form-control" id="professionalProviderHouseNumber">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label">PLZ</label>
-                                    <input type="text" class="form-control" id="professionalProviderZipCode">
-                                </div>
-                            </div>
-                            <div class="col-md-8">
-                                <div class="mb-3">
-                                    <label class="form-label">Stadt</label>
-                                    <input type="text" class="form-control" id="professionalProviderCity">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Telefon</label>
-                                    <input type="tel" class="form-control" id="professionalProviderPhone">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">E-Mail</label>
-                                    <input type="email" class="form-control" id="professionalProviderEmail">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Status</label>
-                            <select class="form-select" id="professionalProviderStatus">
-                                <option value="Aktiv">Aktiv</option>
-                                <option value="Inaktiv">Inaktiv</option>
-                            </select>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
-                    <button type="button" class="btn btn-primary" onclick="saveProfessionalProvider()">Speichern</button>
-                </div>
+    <!-- Incoming Call Overlay -->
+    <div class="incoming-call-overlay" id="incomingCallOverlay">
+        <div class="incoming-call-box">
+            <h4><i class="bi bi-telephone-inbound"></i> Eingehender Anruf</h4>
+            <div class="caller-number" id="incomingCallerNumber">+49 30 123456</div>
+            <div class="incoming-call-actions">
+                <button class="call-btn answer" onclick="answerCall()">
+                    <i class="bi bi-telephone"></i>
+                </button>
+                <button class="call-btn hangup" onclick="rejectCall()">
+                    <i class="bi bi-telephone-x"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -878,7 +1345,9 @@
         </div>
     </div>
 
+    <!-- Modals will be added dynamically -->
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="app.js"></script>
+    <script src="app-integrated.js"></script>
 </body>
 </html>

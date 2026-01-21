@@ -32,15 +32,17 @@ namespace UMOApi.Controllers
         [HttpGet("dashboard")]
         public async Task<ActionResult<ServiceHubDashboardDto>> GetDashboard()
         {
-            var today = DateTime.UtcNow.Date;
+            try
+            {
+                var today = DateTime.UtcNow.Date;
 
-            var activeAlerts = await _context.EmergencyAlerts
-                .Where(a => a.Status != "Resolved" && a.Status != "Cancelled")
-                .Include(a => a.Client)
-                .Include(a => a.EmergencyDevice)
-                .OrderByDescending(a => a.AlertTime)
-                .Take(20)
-                .ToListAsync();
+                var activeAlerts = await _context.EmergencyAlerts
+                    .Where(a => a.Status != "Resolved" && a.Status != "Cancelled")
+                    .Include(a => a.Client)
+                    .Include(a => a.EmergencyDevice)
+                    .OrderByDescending(a => a.AlertTime)
+                    .Take(20)
+                    .ToListAsync();
 
             var activeCalls = await _context.CallLogs
                 .Where(c => c.Status == "Ringing" || c.Status == "Connected" || c.Status == "OnHold")
@@ -102,7 +104,32 @@ namespace UMOApi.Controllers
                 }).ToList()
             };
 
-            return Ok(dashboard);
+                return Ok(dashboard);
+            }
+            catch (Exception ex)
+            {
+                // Log the error for debugging
+                Console.WriteLine($"Dashboard Error: {ex.Message}");
+                Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+                
+                // Return empty dashboard on error instead of 500
+                return Ok(new ServiceHubDashboardDto
+                {
+                    ActiveAlerts = 0,
+                    CriticalAlerts = 0,
+                    OnlineDispatchers = 0,
+                    TotalDispatchers = 0,
+                    ActiveCalls = 0,
+                    OnlineDevices = 0,
+                    TotalDevices = 0,
+                    CallsToday = 0,
+                    AlertsToday = 0,
+                    AverageResponseTime = 0,
+                    RecentAlerts = new List<AlertSummaryDto>(),
+                    ActiveCallsList = new List<CallSummaryDto>(),
+                    DispatcherStatuses = new List<DispatcherStatusDto>()
+                });
+            }
         }
 
         // ==================== ALERTS ====================
@@ -1012,6 +1039,245 @@ namespace UMOApi.Controllers
             };
 
             return Ok(stats);
+        }
+
+        // ==================== AUFZEICHNUNGSEINSTELLUNGEN ====================
+
+        /// <summary>
+        /// Aufzeichnungseinstellungen eines Klienten abrufen
+        /// </summary>
+        [HttpGet("clients/{clientId}/recording-settings")]
+        public async Task<ActionResult<ClientRecordingSettingsDto>> GetClientRecordingSettings(int clientId)
+        {
+            var client = await _context.Clients.FindAsync(clientId);
+            if (client == null)
+                return NotFound("Klient nicht gefunden");
+
+            return Ok(new ClientRecordingSettingsDto
+            {
+                ClientId = client.Id,
+                ClientName = $"{client.FirstName} {client.LastName}",
+                AllowCallRecording = client.AllowCallRecording,
+                RecordingConsentSigned = client.RecordingConsentSigned,
+                RecordingConsentDate = client.RecordingConsentDate,
+                RecordingRetentionDays = client.RecordingRetentionDays
+            });
+        }
+
+        /// <summary>
+        /// Aufzeichnungseinstellungen eines Klienten aktualisieren
+        /// </summary>
+        [HttpPut("clients/{clientId}/recording-settings")]
+        public async Task<IActionResult> UpdateClientRecordingSettings(int clientId, [FromBody] UpdateRecordingSettingsDto dto)
+        {
+            var client = await _context.Clients.FindAsync(clientId);
+            if (client == null)
+                return NotFound("Klient nicht gefunden");
+
+            client.AllowCallRecording = dto.AllowCallRecording;
+            client.RecordingConsentSigned = dto.RecordingConsentSigned;
+            client.RecordingConsentDate = dto.RecordingConsentDate;
+            client.RecordingRetentionDays = dto.RecordingRetentionDays;
+
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        /// <summary>
+        /// Liste aller Klienten mit Aufzeichnungseinstellungen
+        /// </summary>
+        [HttpGet("recording-settings")]
+        public async Task<ActionResult<List<ClientRecordingSettingsDto>>> GetAllRecordingSettings()
+        {
+            var clients = await _context.Clients
+                .OrderBy(c => c.LastName)
+                .ThenBy(c => c.FirstName)
+                .Select(c => new ClientRecordingSettingsDto
+                {
+                    ClientId = c.Id,
+                    ClientName = $"{c.FirstName} {c.LastName}",
+                    AllowCallRecording = c.AllowCallRecording,
+                    RecordingConsentSigned = c.RecordingConsentSigned,
+                    RecordingConsentDate = c.RecordingConsentDate,
+                    RecordingRetentionDays = c.RecordingRetentionDays
+                })
+                .ToListAsync();
+
+            return Ok(clients);
+        }
+
+        // ==================== ERWEITERTES ANRUFPROTOKOLL ====================
+
+        /// <summary>
+        /// Detailliertes Anrufprotokoll mit allen Feldern
+        /// </summary>
+        [HttpGet("calls/{id}")]
+        public async Task<ActionResult<CallLogDto>> GetCallDetail(int id)
+        {
+            var call = await _context.CallLogs
+                .Include(c => c.Dispatcher)
+                .Include(c => c.Client)
+                .Include(c => c.EmergencyAlert)
+                .Include(c => c.EmergencyContact)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (call == null)
+                return NotFound();
+
+            return Ok(new CallLogDto
+            {
+                Id = call.Id,
+                SipgateCallId = call.SipgateCallId,
+                Direction = call.Direction,
+                CallerNumber = call.CallerNumber,
+                CalleeNumber = call.CalleeNumber,
+                DispatcherName = call.Dispatcher != null ? $"{call.Dispatcher.FirstName} {call.Dispatcher.LastName}" : "",
+                ClientName = call.Client != null ? $"{call.Client.FirstName} {call.Client.LastName}" : "",
+                Status = call.Status,
+                StartTime = call.StartTime,
+                EndTime = call.EndTime,
+                DurationSeconds = call.DurationSeconds,
+                CallType = call.CallType,
+                Notes = call.Notes,
+                IsRecorded = call.IsRecorded,
+                RecordingAllowed = call.RecordingAllowed,
+                RecordingUrl = call.RecordingUrl,
+                RecordingDurationSeconds = call.RecordingDurationSeconds,
+                CallSummary = call.CallSummary,
+                CallCategory = call.CallCategory,
+                Priority = call.Priority,
+                WasEscalated = call.WasEscalated,
+                EscalatedTo = call.EscalatedTo,
+                RequiresFollowUp = call.RequiresFollowUp,
+                FollowUpDate = call.FollowUpDate,
+                FollowUpCompleted = call.FollowUpCompleted
+            });
+        }
+
+        /// <summary>
+        /// Anruf abschließen mit Zusammenfassung und Kategorisierung
+        /// </summary>
+        [HttpPost("calls/{id}/complete")]
+        public async Task<IActionResult> CompleteCall(int id, [FromBody] CompleteCallDto dto)
+        {
+            var call = await _context.CallLogs.FindAsync(id);
+            if (call == null)
+                return NotFound();
+
+            call.CallSummary = dto.CallSummary;
+            call.CallCategory = dto.CallCategory;
+            call.Priority = dto.Priority;
+            call.Notes = string.IsNullOrEmpty(call.Notes) ? dto.Notes : $"{call.Notes}\n{dto.Notes}";
+            call.WasEscalated = dto.WasEscalated;
+            call.EscalatedTo = dto.EscalatedTo;
+            call.RequiresFollowUp = dto.RequiresFollowUp;
+            call.FollowUpDate = dto.FollowUpDate;
+
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        /// <summary>
+        /// Follow-up als erledigt markieren
+        /// </summary>
+        [HttpPost("calls/{id}/complete-followup")]
+        public async Task<IActionResult> CompleteFollowUp(int id)
+        {
+            var call = await _context.CallLogs.FindAsync(id);
+            if (call == null)
+                return NotFound();
+
+            call.FollowUpCompleted = true;
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        /// <summary>
+        /// Anrufe mit offenen Follow-ups abrufen
+        /// </summary>
+        [HttpGet("calls/pending-followups")]
+        public async Task<ActionResult<List<CallLogDto>>> GetPendingFollowUps()
+        {
+            var calls = await _context.CallLogs
+                .Include(c => c.Dispatcher)
+                .Include(c => c.Client)
+                .Where(c => c.RequiresFollowUp && !c.FollowUpCompleted)
+                .OrderBy(c => c.FollowUpDate)
+                .Select(c => new CallLogDto
+                {
+                    Id = c.Id,
+                    SipgateCallId = c.SipgateCallId,
+                    Direction = c.Direction,
+                    CallerNumber = c.CallerNumber,
+                    CalleeNumber = c.CalleeNumber,
+                    DispatcherName = c.Dispatcher != null ? $"{c.Dispatcher.FirstName} {c.Dispatcher.LastName}" : "",
+                    ClientName = c.Client != null ? $"{c.Client.FirstName} {c.Client.LastName}" : "",
+                    Status = c.Status,
+                    StartTime = c.StartTime,
+                    EndTime = c.EndTime,
+                    DurationSeconds = c.DurationSeconds,
+                    CallType = c.CallType,
+                    CallSummary = c.CallSummary,
+                    CallCategory = c.CallCategory,
+                    RequiresFollowUp = c.RequiresFollowUp,
+                    FollowUpDate = c.FollowUpDate,
+                    FollowUpCompleted = c.FollowUpCompleted
+                })
+                .ToListAsync();
+
+            return Ok(calls);
+        }
+
+        /// <summary>
+        /// Aufzeichnung für einen Anruf starten (prüft Klient-Einstellung)
+        /// </summary>
+        [HttpPost("calls/{callId}/start-recording")]
+        public async Task<IActionResult> StartCallRecording(string callId)
+        {
+            var call = await _context.CallLogs
+                .Include(c => c.Client)
+                .FirstOrDefaultAsync(c => c.SipgateCallId == callId);
+
+            if (call == null)
+                return NotFound("Anruf nicht gefunden");
+
+            // Prüfe ob Aufzeichnung für diesen Klienten erlaubt ist
+            if (call.Client != null && !call.Client.AllowCallRecording)
+            {
+                return BadRequest(new { 
+                    success = false, 
+                    message = "Aufzeichnung für diesen Klienten nicht erlaubt. Bitte Einverständniserklärung einholen." 
+                });
+            }
+
+            // Aufzeichnung über Sipgate starten
+            var success = await _sipgateService.StartRecordingAsync(callId);
+            if (!success)
+                return BadRequest(new { success = false, message = "Aufzeichnung konnte nicht gestartet werden" });
+
+            call.IsRecorded = true;
+            call.RecordingAllowed = call.Client?.AllowCallRecording ?? false;
+            call.RecordingStartedManually = true;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "Aufzeichnung gestartet" });
+        }
+
+        /// <summary>
+        /// Aufzeichnung für einen Anruf stoppen
+        /// </summary>
+        [HttpPost("calls/{callId}/stop-recording")]
+        public async Task<IActionResult> StopCallRecording(string callId)
+        {
+            var call = await _context.CallLogs.FirstOrDefaultAsync(c => c.SipgateCallId == callId);
+            if (call == null)
+                return NotFound("Anruf nicht gefunden");
+
+            var success = await _sipgateService.StopRecordingAsync(callId);
+            if (!success)
+                return BadRequest(new { success = false, message = "Aufzeichnung konnte nicht gestoppt werden" });
+
+            return Ok(new { success = true, message = "Aufzeichnung gestoppt" });
         }
 
         // ==================== WEBRTC CREDENTIALS ====================

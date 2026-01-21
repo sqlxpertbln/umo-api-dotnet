@@ -436,6 +436,7 @@ namespace UMOApi.Services
         public bool Success { get; set; }
         public string? SessionId { get; set; }
         public string? Error { get; set; }
+        public string Message => Success ? "Anruf erfolgreich initiiert" : (Error ?? "Anruf fehlgeschlagen");
     }
 
     public class SipgateActiveCallsResponse

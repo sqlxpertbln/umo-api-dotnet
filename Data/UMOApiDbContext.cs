@@ -77,6 +77,10 @@ public class UMOApiDbContext : DbContext
     public DbSet<CallLog> CallLogs { get; set; }
     public DbSet<SipConfiguration> SipConfigurations { get; set; }
     public DbSet<DispatcherShift> DispatcherShifts { get; set; }
+    public DbSet<EmergencyChainAction> EmergencyChainActions { get; set; }
+    
+    // Client Medications (Medikamentenliste für Hausnotruf)
+    public DbSet<ClientMedication> ClientMedications { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

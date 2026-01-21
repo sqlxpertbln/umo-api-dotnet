@@ -260,6 +260,58 @@ namespace UMOApi.Models
         public string CallType { get; set; } = string.Empty;
         public string Notes { get; set; } = string.Empty;
         public bool IsRecorded { get; set; }
+        
+        // Erweiterte Aufzeichnungsfelder
+        public bool RecordingAllowed { get; set; }
+        public string RecordingUrl { get; set; } = string.Empty;
+        public int RecordingDurationSeconds { get; set; }
+        public string CallSummary { get; set; } = string.Empty;
+        public string CallCategory { get; set; } = string.Empty;
+        public string Priority { get; set; } = string.Empty;
+        public bool WasEscalated { get; set; }
+        public string EscalatedTo { get; set; } = string.Empty;
+        public bool RequiresFollowUp { get; set; }
+        public DateTime? FollowUpDate { get; set; }
+        public bool FollowUpCompleted { get; set; }
+    }
+    
+    /// <summary>
+    /// DTO für Aufzeichnungseinstellungen eines Klienten
+    /// </summary>
+    public class ClientRecordingSettingsDto
+    {
+        public int ClientId { get; set; }
+        public string ClientName { get; set; } = string.Empty;
+        public bool AllowCallRecording { get; set; }
+        public bool RecordingConsentSigned { get; set; }
+        public DateTime? RecordingConsentDate { get; set; }
+        public int RecordingRetentionDays { get; set; }
+    }
+    
+    /// <summary>
+    /// DTO zum Aktualisieren der Aufzeichnungseinstellungen
+    /// </summary>
+    public class UpdateRecordingSettingsDto
+    {
+        public bool AllowCallRecording { get; set; }
+        public bool RecordingConsentSigned { get; set; }
+        public DateTime? RecordingConsentDate { get; set; }
+        public int RecordingRetentionDays { get; set; } = 90;
+    }
+    
+    /// <summary>
+    /// DTO zum Abschließen eines Anrufs mit Zusammenfassung
+    /// </summary>
+    public class CompleteCallDto
+    {
+        public string CallSummary { get; set; } = string.Empty;
+        public string CallCategory { get; set; } = string.Empty; // Emergency, Medical, Technical, Social, Test
+        public string Priority { get; set; } = "Normal"; // Critical, High, Normal, Low
+        public string Notes { get; set; } = string.Empty;
+        public bool WasEscalated { get; set; }
+        public string EscalatedTo { get; set; } = string.Empty;
+        public bool RequiresFollowUp { get; set; }
+        public DateTime? FollowUpDate { get; set; }
     }
     
     // ==================== WEBHOOK DTOs ====================

@@ -171,8 +171,75 @@ namespace UMOApi.Models
         
         public bool ContactsNotified { get; set; } = false;
         
+        // === NOTFALLKETTE STATUS ===
+        
+        /// <summary>
+        /// Aktueller Schritt in der Notfallkette
+        /// </summary>
+        [StringLength(50)]
+        public string EmergencyChainStep { get; set; } = "Initial"; // Initial, ContactingFamily, ContactingDoctor, ContactingAmbulance, InConference, Resolved
+        
+        /// <summary>
+        /// Zeitpunkt wann Angehörige informiert wurden
+        /// </summary>
+        public DateTime? FamilyNotifiedTime { get; set; }
+        
+        /// <summary>
+        /// Anzahl der benachrichtigten Angehörigen
+        /// </summary>
+        public int FamilyContactsNotified { get; set; } = 0;
+        
+        /// <summary>
+        /// Zeitpunkt wann Arzt informiert wurde
+        /// </summary>
+        public DateTime? DoctorNotifiedTime { get; set; }
+        
+        /// <summary>
+        /// Name des informierten Arztes
+        /// </summary>
+        [StringLength(200)]
+        public string DoctorNotified { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Zeitpunkt wann Rettungsdienst alarmiert wurde
+        /// </summary>
+        public DateTime? AmbulanceCalledTime { get; set; }
+        
+        /// <summary>
+        /// Rettungsdienst-Einsatznummer
+        /// </summary>
+        [StringLength(50)]
+        public string AmbulanceIncidentNumber { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Medikamentenliste wurde an Rettungsdienst übergeben
+        /// </summary>
+        public bool MedicationListProvided { get; set; } = false;
+        
+        /// <summary>
+        /// Zeitpunkt der Medikamentenlisten-Übergabe
+        /// </summary>
+        public DateTime? MedicationListProvidedTime { get; set; }
+        
+        /// <summary>
+        /// Konferenzschaltung aktiv (Makeln)
+        /// </summary>
+        public bool ConferenceActive { get; set; } = false;
+        
+        /// <summary>
+        /// Teilnehmer der Konferenzschaltung
+        /// </summary>
+        [StringLength(500)]
+        public string ConferenceParticipants { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Geschätzte Ankunftszeit des Rettungsdienstes
+        /// </summary>
+        public DateTime? AmbulanceEta { get; set; }
+        
         // Navigation
         public ICollection<CallLog> CallLogs { get; set; } = new List<CallLog>();
+        public ICollection<EmergencyChainAction> ChainActions { get; set; } = new List<EmergencyChainAction>();
     }
     
     // ==================== DISPATCHERS ====================
@@ -288,6 +355,78 @@ namespace UMOApi.Models
         
         [StringLength(50)]
         public string CallType { get; set; } = string.Empty; // Emergency, Callback, Routine, Test
+        
+        // === Erweiterte Aufzeichnungsfelder ===
+        
+        /// <summary>
+        /// Aufzeichnung war erlaubt (basierend auf Klient-Einstellung)
+        /// </summary>
+        public bool RecordingAllowed { get; set; } = false;
+        
+        /// <summary>
+        /// Aufzeichnung wurde vom Disponenten manuell gestartet
+        /// </summary>
+        public bool RecordingStartedManually { get; set; } = false;
+        
+        /// <summary>
+        /// Dateigröße der Aufzeichnung in Bytes
+        /// </summary>
+        public long RecordingFileSize { get; set; } = 0;
+        
+        /// <summary>
+        /// Dauer der Aufzeichnung in Sekunden
+        /// </summary>
+        public int RecordingDurationSeconds { get; set; } = 0;
+        
+        /// <summary>
+        /// Transkription des Gesprächs (optional, für Dokumentation)
+        /// </summary>
+        [StringLength(10000)]
+        public string Transcription { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Zusammenfassung des Gesprächs
+        /// </summary>
+        [StringLength(2000)]
+        public string CallSummary { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Kategorisierung des Anrufs nach Abschluss
+        /// </summary>
+        [StringLength(50)]
+        public string CallCategory { get; set; } = string.Empty; // Emergency, Medical, Technical, Social, Test
+        
+        /// <summary>
+        /// Priorität des Anrufs
+        /// </summary>
+        [StringLength(20)]
+        public string Priority { get; set; } = "Normal"; // Critical, High, Normal, Low
+        
+        /// <summary>
+        /// Wurde der Anruf eskaliert?
+        /// </summary>
+        public bool WasEscalated { get; set; } = false;
+        
+        /// <summary>
+        /// An wen wurde eskaliert?
+        /// </summary>
+        [StringLength(100)]
+        public string EscalatedTo { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Follow-up erforderlich?
+        /// </summary>
+        public bool RequiresFollowUp { get; set; } = false;
+        
+        /// <summary>
+        /// Follow-up Datum
+        /// </summary>
+        public DateTime? FollowUpDate { get; set; }
+        
+        /// <summary>
+        /// Follow-up erledigt?
+        /// </summary>
+        public bool FollowUpCompleted { get; set; } = false;
     }
     
     // ==================== SIP CONFIGURATION ====================
@@ -356,5 +495,83 @@ namespace UMOApi.Models
         public string Notes { get; set; } = string.Empty;
         
         public bool IsActive { get; set; } = true;
+    }
+    
+    // ==================== EMERGENCY CHAIN ACTION ====================
+    
+    /// <summary>
+    /// Protokolliert jeden Schritt in der Notfallkette
+    /// </summary>
+    public class EmergencyChainAction
+    {
+        [Key]
+        public int Id { get; set; }
+        
+        public int EmergencyAlertId { get; set; }
+        public EmergencyAlert? EmergencyAlert { get; set; }
+        
+        /// <summary>
+        /// Art der Aktion
+        /// </summary>
+        [Required]
+        [StringLength(50)]
+        public string ActionType { get; set; } = string.Empty; // CallFamily, SmsFamily, CallDoctor, CallAmbulance, ProvideMedList, StartConference, AddToConference, EndConference
+        
+        /// <summary>
+        /// Zeitpunkt der Aktion
+        /// </summary>
+        public DateTime ActionTime { get; set; } = DateTime.UtcNow;
+        
+        /// <summary>
+        /// Durchgeführt von (Disponent)
+        /// </summary>
+        public int? DispatcherId { get; set; }
+        public Dispatcher? Dispatcher { get; set; }
+        
+        /// <summary>
+        /// Ziel der Aktion (Name/Telefonnummer)
+        /// </summary>
+        [StringLength(200)]
+        public string Target { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Telefonnummer des Ziels
+        /// </summary>
+        [StringLength(20)]
+        public string TargetPhone { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Ergebnis der Aktion
+        /// </summary>
+        [StringLength(50)]
+        public string Result { get; set; } = string.Empty; // Success, NoAnswer, Busy, Failed, Voicemail
+        
+        /// <summary>
+        /// Dauer des Anrufs in Sekunden (falls Anruf)
+        /// </summary>
+        public int DurationSeconds { get; set; } = 0;
+        
+        /// <summary>
+        /// Notizen zur Aktion
+        /// </summary>
+        [StringLength(1000)]
+        public string Notes { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Wurde Medikamentenliste übergeben?
+        /// </summary>
+        public bool MedicationListProvided { get; set; } = false;
+        
+        /// <summary>
+        /// Inhalt der übergebenen Medikamentenliste
+        /// </summary>
+        [StringLength(5000)]
+        public string MedicationListContent { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Sipgate Call-ID (falls Anruf)
+        /// </summary>
+        [StringLength(100)]
+        public string SipgateCallId { get; set; } = string.Empty;
     }
 }

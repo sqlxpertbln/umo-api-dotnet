@@ -152,18 +152,25 @@ async function loadDashboard() {
             const shRes = await fetch(`${API_BASE}/servicehub/dashboard`);
             const shData = await shRes.json();
             
-            document.getElementById('active-alerts').textContent = shData.activeAlerts || 0;
-            document.getElementById('active-calls').textContent = shData.activeCalls || 0;
-            document.getElementById('online-dispatchers').textContent = shData.onlineDispatchers || 0;
-            document.getElementById('online-emergency-devices').textContent = shData.onlineDevices || 0;
-            
-            // Update alert badge
-            updateAlertBadge(shData.activeAlerts || 0);
-            
-            // Load recent alerts for dashboard
-            loadDashboardAlerts(shData.recentAlerts || []);
+            // If dashboard returns empty data, load from individual endpoints
+            if (shData.activeAlerts === 0 && shData.totalDispatchers === 0) {
+                console.log('Dashboard returned empty, loading from individual endpoints...');
+                await loadDashboardServiceHubDataDirectly();
+            } else {
+                document.getElementById('active-alerts').textContent = shData.activeAlerts || 0;
+                document.getElementById('active-calls').textContent = shData.activeCalls || 0;
+                document.getElementById('online-dispatchers').textContent = shData.onlineDispatchers || 0;
+                document.getElementById('online-emergency-devices').textContent = shData.onlineDevices || 0;
+                
+                // Update alert badge
+                updateAlertBadge(shData.activeAlerts || 0);
+                
+                // Load recent alerts for dashboard
+                loadDashboardAlerts(shData.recentAlerts || []);
+            }
         } catch (e) {
-            console.log('Service Hub not available:', e);
+            console.log('Service Hub not available, trying direct load:', e);
+            await loadDashboardServiceHubDataDirectly();
         }
         
         // Load recent clients
@@ -172,6 +179,40 @@ async function loadDashboard() {
     } catch (error) {
         console.error('Error loading dashboard:', error);
         showToast('Fehler beim Laden des Dashboards', 'danger');
+    }
+}
+
+async function loadDashboardServiceHubDataDirectly() {
+    try {
+        // Load alerts directly
+        const alertsResponse = await fetch(`${API_BASE}/servicehub/alerts`);
+        const alerts = await alertsResponse.json();
+        const activeAlerts = alerts.filter(a => a.status !== 'Resolved' && a.status !== 'Cancelled');
+        
+        // Load dispatchers directly
+        const dispatchersResponse = await fetch(`${API_BASE}/servicehub/dispatchers`);
+        const dispatchers = await dispatchersResponse.json();
+        const onlineDispatchers = dispatchers.filter(d => d.status === 'Online' || d.status === 'OnCall');
+        
+        // Load devices directly
+        const devicesResponse = await fetch(`${API_BASE}/servicehub/devices`);
+        const devices = await devicesResponse.json();
+        const onlineDevices = devices.filter(d => d.isOnline);
+        
+        // Update stats
+        document.getElementById('active-alerts').textContent = activeAlerts.length;
+        document.getElementById('active-calls').textContent = 0;
+        document.getElementById('online-dispatchers').textContent = onlineDispatchers.length;
+        document.getElementById('online-emergency-devices').textContent = onlineDevices.length;
+        
+        // Update alert badge
+        updateAlertBadge(activeAlerts.length);
+        
+        // Load recent alerts for dashboard
+        loadDashboardAlerts(activeAlerts);
+        
+    } catch (error) {
+        console.error('Error loading service hub data directly:', error);
     }
 }
 
@@ -268,7 +309,7 @@ async function loadDevices() {
     try {
         const response = await fetch(`${API_BASE}/devices`);
         const data = await response.json();
-        const devices = data.items || data || [];
+        const devices = data.results || data.items || data || [];
         
         const tbody = document.getElementById('devices-table-body');
         tbody.innerHTML = devices.map(d => `
@@ -276,7 +317,7 @@ async function loadDevices() {
                 <td>${d.mandantId || 1}-${d.deviceId || d.id}</td>
                 <td>${d.serialNumber || '-'}</td>
                 <td>${d.deviceType || '-'}</td>
-                <td><span class="status-badge ${d.isActive ? 'status-active' : 'status-inactive'}">${d.isActive ? 'Aktiv' : 'Inaktiv'}</span></td>
+                <td><span class="status-badge ${d.status === 'Aktiv' ? 'status-active' : 'status-inactive'}">${d.status || 'Unbekannt'}</span></td>
                 <td>
                     <button class="btn btn-sm btn-outline-primary btn-action" onclick="viewDevice(${d.mandantId || 1}, ${d.deviceId || d.id})">
                         <i class="bi bi-eye"></i>
@@ -300,7 +341,7 @@ async function loadDirectProviders() {
     try {
         const response = await fetch(`${API_BASE}/directProvider`);
         const data = await response.json();
-        const providers = data.items || data || [];
+        const providers = data.results || data.items || data || [];
         
         const tbody = document.getElementById('direct-providers-table-body');
         tbody.innerHTML = providers.map(p => `
@@ -330,7 +371,7 @@ async function loadProfessionalProviders() {
     try {
         const response = await fetch(`${API_BASE}/professionalProvider`);
         const data = await response.json();
-        const providers = data.items || data || [];
+        const providers = data.results || data.items || data || [];
         
         const tbody = document.getElementById('professional-providers-table-body');
         tbody.innerHTML = providers.map(p => `
@@ -383,8 +424,16 @@ async function loadSystemEntries() {
 // ============================================
 async function loadServiceHubDashboard() {
     try {
+        // Try dashboard endpoint first
         const response = await fetch(`${API_BASE}/servicehub/dashboard`);
         const data = await response.json();
+        
+        // If dashboard returns empty data, load from individual endpoints
+        if (data.activeAlerts === 0 && data.totalDispatchers === 0) {
+            console.log('Dashboard returned empty, loading from individual endpoints...');
+            await loadServiceHubDataDirectly();
+            return;
+        }
         
         // Update stats
         document.getElementById('sh-active-alerts').textContent = data.activeAlerts || 0;
@@ -400,8 +449,64 @@ async function loadServiceHubDashboard() {
         
     } catch (error) {
         console.error('Error loading service hub dashboard:', error);
+        // Fallback to direct loading
+        await loadServiceHubDataDirectly();
+    }
+}
+
+async function loadServiceHubDataDirectly() {
+    try {
+        // Load alerts directly
+        const alertsResponse = await fetch(`${API_BASE}/servicehub/alerts`);
+        const alerts = await alertsResponse.json();
+        const activeAlerts = alerts.filter(a => a.status !== 'Resolved' && a.status !== 'Cancelled');
+        
+        // Load dispatchers directly
+        const dispatchersResponse = await fetch(`${API_BASE}/servicehub/dispatchers`);
+        const dispatchers = await dispatchersResponse.json();
+        const onlineDispatchers = dispatchers.filter(d => d.status === 'Online' || d.status === 'OnCall');
+        
+        // Load devices directly
+        const devicesResponse = await fetch(`${API_BASE}/servicehub/devices`);
+        const devices = await devicesResponse.json();
+        const onlineDevices = devices.filter(d => d.isOnline);
+        
+        // Update stats
+        document.getElementById('sh-active-alerts').textContent = activeAlerts.length;
+        document.getElementById('sh-active-calls').textContent = 0; // TODO: Load from calls endpoint
+        document.getElementById('sh-online-dispatchers').textContent = onlineDispatchers.length;
+        document.getElementById('sh-online-devices').textContent = onlineDevices.length;
+        
+        // Load alerts into UI
+        loadServiceHubAlerts(activeAlerts);
+        
+        // Load dispatchers into UI
+        loadOnlineDispatchersList(dispatchers);
+        
+    } catch (error) {
+        console.error('Error loading service hub data directly:', error);
         showToast('Fehler beim Laden der Notruf-Leitstelle', 'danger');
     }
+}
+
+function loadOnlineDispatchersList(dispatchers) {
+    const container = document.getElementById('online-dispatchers');
+    if (!container) return;
+    
+    if (!dispatchers || dispatchers.length === 0) {
+        container.innerHTML = '<div class="text-center py-3">Keine Disponenten verfügbar</div>';
+        return;
+    }
+    
+    container.innerHTML = dispatchers.map(d => `
+        <div class="dispatcher-item ${d.status === 'Online' ? 'online' : d.status === 'Break' ? 'break' : 'offline'}">
+            <div class="dispatcher-avatar">${d.firstName?.charAt(0) || ''}${d.lastName?.charAt(0) || ''}</div>
+            <div class="dispatcher-info">
+                <div class="dispatcher-name">${d.fullName || d.firstName + ' ' + d.lastName}</div>
+                <div class="dispatcher-status">${d.status} - Ext. ${d.extension}</div>
+            </div>
+        </div>
+    `).join('');
 }
 
 function loadServiceHubAlerts(alerts) {
@@ -433,6 +538,9 @@ function loadServiceHubAlerts(alerts) {
                 ${alert.heartRate ? `<span><i class="bi bi-heart-pulse"></i> ${alert.heartRate} BPM</span>` : ''}
             </div>
             <div class="sh-alert-actions">
+                <button class="btn btn-sm btn-danger" onclick="openEmergencyChain(${alert.id})" title="Notfallkette starten">
+                    <i class="bi bi-exclamation-triangle"></i> Notfallkette
+                </button>
                 <button class="btn btn-sm btn-success" onclick="callNumber('${alert.callerNumber}')">
                     <i class="bi bi-telephone"></i> Anrufen
                 </button>
@@ -440,11 +548,10 @@ function loadServiceHubAlerts(alerts) {
                     <i class="bi bi-check"></i> Bestätigen
                 </button>
                 <button class="btn btn-sm btn-warning" onclick="notifyContacts(${alert.id})">
-                    <i class="bi bi-envelope"></i> SMS senden
+                    <i class="bi bi-envelope"></i> SMS
                 </button>
                 ${alert.status === 'InProgress' ? '<span class="badge bg-info ms-2">In Bearbeitung</span>' : ''}
                 ${alert.status === 'New' ? '<span class="badge bg-danger ms-2">Neu</span>' : ''}
-            </div>
         </div>
     `).join('');
 }
@@ -1152,3 +1259,542 @@ function viewDirectProvider(id) {
 function viewProfessionalProvider(id) {
     showToast(`Professional Provider ${id} anzeigen`, 'info');
 }
+
+
+// ============================================
+// Emergency Chain / Notfallkette
+// ============================================
+
+// Öffnet das Notfallketten-Modal für einen Alarm
+async function openEmergencyChain(alertId) {
+    try {
+        // Lade Alarm-Details und Klient-Informationen
+        const response = await fetch(`${API_BASE}/emergencychain/alerts/${alertId}/client-info`);
+        const clientInfo = await response.json();
+        
+        // Lade Notfallketten-Status
+        const statusResponse = await fetch(`${API_BASE}/emergencychain/alerts/${alertId}/status`);
+        const chainStatus = await statusResponse.json();
+        
+        // Modal erstellen und anzeigen
+        showEmergencyChainModal(alertId, clientInfo, chainStatus);
+        
+    } catch (error) {
+        console.error('Error opening emergency chain:', error);
+        showToast('Fehler beim Laden der Notfallkette', 'danger');
+    }
+}
+
+function showEmergencyChainModal(alertId, clientInfo, chainStatus) {
+    // Entferne bestehendes Modal falls vorhanden
+    const existingModal = document.getElementById('emergencyChainModal');
+    if (existingModal) existingModal.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'emergencyChainModal';
+    modal.className = 'modal fade show';
+    modal.style.cssText = 'display: block; background: rgba(0,0,0,0.7);';
+    
+    const medicationHtml = clientInfo.medications?.length > 0 
+        ? clientInfo.medications.map(m => `
+            <tr>
+                <td><strong>${m.name}</strong></td>
+                <td>${m.dosage}</td>
+                <td>${m.frequency}</td>
+                <td>${m.category || '-'}</td>
+            </tr>
+        `).join('')
+        : '<tr><td colspan="4" class="text-muted">Keine Medikamente hinterlegt</td></tr>';
+    
+    modal.innerHTML = `
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content bg-dark text-light">
+                <div class="modal-header bg-danger">
+                    <h5 class="modal-title">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Notfallkette - ${clientInfo.name || 'Unbekannt'}
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" onclick="closeEmergencyChainModal()"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Klient-Informationen -->
+                        <div class="col-md-4">
+                            <div class="card bg-secondary mb-3">
+                                <div class="card-header">
+                                    <i class="bi bi-person-fill me-2"></i>Klient-Daten
+                                </div>
+                                <div class="card-body">
+                                    <p><strong>Name:</strong> ${clientInfo.name || '-'}</p>
+                                    <p><strong>Geburtsdatum:</strong> ${clientInfo.birthDate ? new Date(clientInfo.birthDate).toLocaleDateString('de-DE') : '-'}</p>
+                                    <p><strong>Adresse:</strong> ${clientInfo.address || '-'}</p>
+                                    <p><strong>Telefon:</strong> ${clientInfo.phone || '-'}</p>
+                                    ${clientInfo.medicalNotes ? `<p><strong>Med. Hinweise:</strong> ${clientInfo.medicalNotes}</p>` : ''}
+                                    <hr>
+                                    <p><strong>Aufzeichnung:</strong> 
+                                        <span class="badge ${clientInfo.recordingEnabled ? 'bg-success' : 'bg-secondary'}">
+                                            ${clientInfo.recordingEnabled ? 'Aktiviert' : 'Deaktiviert'}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Medikamentenliste -->
+                        <div class="col-md-4">
+                            <div class="card bg-secondary mb-3">
+                                <div class="card-header">
+                                    <i class="bi bi-capsule me-2"></i>Medikamentenliste
+                                </div>
+                                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                                    <table class="table table-dark table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Medikament</th>
+                                                <th>Dosierung</th>
+                                                <th>Häufigkeit</th>
+                                                <th>Kategorie</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${medicationHtml}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Notfallketten-Status -->
+                        <div class="col-md-4">
+                            <div class="card bg-secondary mb-3">
+                                <div class="card-header">
+                                    <i class="bi bi-list-check me-2"></i>Notfallketten-Status
+                                </div>
+                                <div class="card-body">
+                                    <div class="chain-step ${chainStatus.contactsNotified ? 'completed' : ''}">
+                                        <i class="bi bi-${chainStatus.contactsNotified ? 'check-circle-fill text-success' : 'circle'}"></i>
+                                        Angehörige benachrichtigt
+                                    </div>
+                                    <div class="chain-step ${chainStatus.doctorCalled ? 'completed' : ''}">
+                                        <i class="bi bi-${chainStatus.doctorCalled ? 'check-circle-fill text-success' : 'circle'}"></i>
+                                        Arzt informiert
+                                    </div>
+                                    <div class="chain-step ${chainStatus.ambulanceCalled ? 'completed' : ''}">
+                                        <i class="bi bi-${chainStatus.ambulanceCalled ? 'check-circle-fill text-success' : 'circle'}"></i>
+                                        Rettungsdienst alarmiert
+                                    </div>
+                                    <div class="chain-step ${chainStatus.conferenceActive ? 'completed' : ''}">
+                                        <i class="bi bi-${chainStatus.conferenceActive ? 'check-circle-fill text-success' : 'circle'}"></i>
+                                        Konferenzschaltung aktiv
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Aktions-Buttons -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="card bg-dark border-light">
+                                <div class="card-header">
+                                    <i class="bi bi-telephone-fill me-2"></i>Notfallketten-Aktionen
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <button class="btn btn-warning btn-lg" onclick="notifyAllContacts(${alertId})" ${chainStatus.contactsNotified ? 'disabled' : ''}>
+                                            <i class="bi bi-people-fill me-2"></i>Angehörige benachrichtigen
+                                        </button>
+                                        <button class="btn btn-info btn-lg" onclick="callDoctor(${alertId})" ${chainStatus.doctorCalled ? 'disabled' : ''}>
+                                            <i class="bi bi-heart-pulse me-2"></i>Arzt anrufen
+                                        </button>
+                                        <button class="btn btn-danger btn-lg" onclick="callAmbulance(${alertId})">
+                                            <i class="bi bi-truck me-2"></i>Rettungsdienst (112)
+                                        </button>
+                                        <button class="btn btn-primary btn-lg" onclick="startConference(${alertId})" ${chainStatus.conferenceActive ? 'disabled' : ''}>
+                                            <i class="bi bi-people me-2"></i>Konferenz starten
+                                        </button>
+                                    </div>
+                                    
+                                    ${chainStatus.conferenceActive ? `
+                                        <div class="mt-3 p-3 bg-secondary rounded">
+                                            <h6><i class="bi bi-broadcast me-2"></i>Aktive Konferenz</h6>
+                                            <p>Teilnehmer: ${chainStatus.conferenceParticipants || 'Disponent'}</p>
+                                            <div class="d-flex gap-2">
+                                                <button class="btn btn-outline-light" onclick="addParticipantDialog(${alertId})">
+                                                    <i class="bi bi-person-plus me-2"></i>Teilnehmer hinzufügen
+                                                </button>
+                                                <button class="btn btn-outline-danger" onclick="endConference(${alertId})">
+                                                    <i class="bi bi-x-circle me-2"></i>Konferenz beenden
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Protokoll -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="card bg-dark border-light">
+                                <div class="card-header">
+                                    <i class="bi bi-journal-text me-2"></i>Aktionsprotokoll
+                                </div>
+                                <div class="card-body" style="max-height: 200px; overflow-y: auto;">
+                                    <div id="chainActionLog">
+                                        <p class="text-muted">Lade Protokoll...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" onclick="resolveAlertFromChain(${alertId})">
+                        <i class="bi bi-check-circle me-2"></i>Alarm abschließen
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEmergencyChainModal()">Schließen</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Lade Aktionsprotokoll
+    loadChainActionLog(alertId);
+}
+
+function closeEmergencyChainModal() {
+    const modal = document.getElementById('emergencyChainModal');
+    if (modal) modal.remove();
+}
+
+async function loadChainActionLog(alertId) {
+    try {
+        const response = await fetch(`${API_BASE}/emergencychain/alerts/${alertId}/actions`);
+        const actions = await response.json();
+        
+        const container = document.getElementById('chainActionLog');
+        if (actions.length === 0) {
+            container.innerHTML = '<p class="text-muted">Noch keine Aktionen durchgeführt</p>';
+            return;
+        }
+        
+        container.innerHTML = actions.map(a => `
+            <div class="action-log-item mb-2 p-2 bg-secondary rounded">
+                <div class="d-flex justify-content-between">
+                    <span class="badge bg-${getActionBadgeColor(a.actionType)}">${formatActionType(a.actionType)}</span>
+                    <small>${new Date(a.timestamp).toLocaleString('de-DE')}</small>
+                </div>
+                <p class="mb-0 mt-1 small">${a.notes || '-'}</p>
+                ${a.targetContact ? `<small class="text-muted">Kontakt: ${a.targetContact}</small>` : ''}
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Error loading action log:', error);
+    }
+}
+
+function getActionBadgeColor(actionType) {
+    const colors = {
+        'NotifyContact': 'warning',
+        'CallDoctor': 'info',
+        'CallAmbulance': 'danger',
+        'StartConference': 'primary',
+        'AddParticipant': 'secondary',
+        'EndConference': 'dark',
+        'ResolveAlert': 'success'
+    };
+    return colors[actionType] || 'secondary';
+}
+
+function formatActionType(actionType) {
+    const types = {
+        'NotifyContact': 'Kontakt benachrichtigt',
+        'CallDoctor': 'Arzt angerufen',
+        'CallAmbulance': 'Rettungsdienst',
+        'StartConference': 'Konferenz gestartet',
+        'AddParticipant': 'Teilnehmer hinzugefügt',
+        'EndConference': 'Konferenz beendet',
+        'ResolveAlert': 'Alarm abgeschlossen'
+    };
+    return types[actionType] || actionType;
+}
+
+// Notfallketten-Aktionen
+async function notifyAllContacts(alertId) {
+    try {
+        showToast('Benachrichtige Angehörige...', 'info');
+        
+        const response = await fetch(`${API_BASE}/emergencychain/alerts/${alertId}/notify-all-contacts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dispatcherId: 1 })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast(`${result.notifiedCount} Kontakte benachrichtigt`, 'success');
+            // Modal aktualisieren
+            const statusResponse = await fetch(`${API_BASE}/emergencychain/alerts/${alertId}/status`);
+            const chainStatus = await statusResponse.json();
+            loadChainActionLog(alertId);
+        } else {
+            showToast('Fehler beim Benachrichtigen: ' + result.message, 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Error notifying contacts:', error);
+        showToast('Fehler beim Benachrichtigen der Kontakte', 'danger');
+    }
+}
+
+async function callDoctor(alertId) {
+    try {
+        showToast('Rufe Arzt an...', 'info');
+        
+        const response = await fetch(`${API_BASE}/emergencychain/alerts/${alertId}/call-doctor`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dispatcherId: 1 })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast(`Arzt ${result.doctorName} wird angerufen`, 'success');
+            loadChainActionLog(alertId);
+        } else {
+            showToast('Fehler: ' + result.message, 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Error calling doctor:', error);
+        showToast('Fehler beim Anrufen des Arztes', 'danger');
+    }
+}
+
+async function callAmbulance(alertId) {
+    // Bestätigung anfordern
+    if (!confirm('Rettungsdienst (112) alarmieren?\n\nDie Medikamentenliste wird automatisch übermittelt.')) {
+        return;
+    }
+    
+    try {
+        showToast('Alarmiere Rettungsdienst...', 'info');
+        
+        const response = await fetch(`${API_BASE}/emergencychain/alerts/${alertId}/call-ambulance`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                dispatcherId: 1,
+                ambulanceNumber: '112'
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('Rettungsdienst wird alarmiert', 'success');
+            
+            // Zeige Medikamentenliste für Übergabe
+            if (result.medications?.length > 0) {
+                showMedicationHandover(result);
+            }
+            
+            loadChainActionLog(alertId);
+        } else {
+            showToast('Fehler: ' + result.message, 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Error calling ambulance:', error);
+        showToast('Fehler beim Alarmieren des Rettungsdienstes', 'danger');
+    }
+}
+
+function showMedicationHandover(ambulanceResult) {
+    const medList = ambulanceResult.medications.map(m => 
+        `• ${m.name} - ${m.dosage} (${m.frequency})`
+    ).join('\n');
+    
+    alert(`MEDIKAMENTENLISTE FÜR RETTUNGSDIENST:\n\nAdresse: ${ambulanceResult.clientAddress}\n\n${ambulanceResult.medicationListText || medList}`);
+}
+
+async function startConference(alertId) {
+    try {
+        showToast('Starte Konferenzschaltung...', 'info');
+        
+        const response = await fetch(`${API_BASE}/emergencychain/alerts/${alertId}/start-conference`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dispatcherId: 1 })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('Konferenzschaltung gestartet', 'success');
+            // Modal neu laden
+            openEmergencyChain(alertId);
+        } else {
+            showToast('Fehler: ' + result.message, 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Error starting conference:', error);
+        showToast('Fehler beim Starten der Konferenz', 'danger');
+    }
+}
+
+function addParticipantDialog(alertId) {
+    const name = prompt('Name des Teilnehmers:');
+    if (!name) return;
+    
+    const phone = prompt('Telefonnummer:');
+    if (!phone) return;
+    
+    const role = prompt('Rolle (z.B. Angehöriger, Arzt, Rettungsdienst):') || 'Teilnehmer';
+    
+    addConferenceParticipant(alertId, name, phone, role);
+}
+
+async function addConferenceParticipant(alertId, name, phone, role) {
+    try {
+        const response = await fetch(`${API_BASE}/emergencychain/alerts/${alertId}/add-participant`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                participantName: name,
+                phoneNumber: phone,
+                role: role,
+                dispatcherId: 1
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast(`${name} zur Konferenz hinzugefügt`, 'success');
+            openEmergencyChain(alertId);
+        } else {
+            showToast('Fehler: ' + result.message, 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Error adding participant:', error);
+        showToast('Fehler beim Hinzufügen des Teilnehmers', 'danger');
+    }
+}
+
+async function endConference(alertId) {
+    if (!confirm('Konferenzschaltung beenden?')) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/emergencychain/alerts/${alertId}/end-conference`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dispatcherId: 1 })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('Konferenz beendet', 'success');
+            openEmergencyChain(alertId);
+        }
+        
+    } catch (error) {
+        console.error('Error ending conference:', error);
+    }
+}
+
+async function resolveAlertFromChain(alertId) {
+    const resolution = prompt('Abschlussnotiz (optional):') || 'Alarm abgeschlossen';
+    
+    try {
+        await fetch(`${API_BASE}/servicehub/alerts/${alertId}/resolve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                dispatcherId: 1,
+                resolution: resolution
+            })
+        });
+        
+        showToast('Alarm abgeschlossen', 'success');
+        closeEmergencyChainModal();
+        loadServiceHubDashboard();
+        loadDashboard();
+        
+    } catch (error) {
+        console.error('Error resolving alert:', error);
+        showToast('Fehler beim Abschließen des Alarms', 'danger');
+    }
+}
+
+// ============================================
+// Recording Settings / Aufzeichnungseinstellungen
+// ============================================
+
+async function toggleRecording(clientId, enabled) {
+    try {
+        const response = await fetch(`${API_BASE}/emergencychain/clients/${clientId}/recording`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                recordingEnabled: enabled,
+                recordingConsent: enabled,
+                consentDate: enabled ? new Date().toISOString() : null
+            })
+        });
+        
+        if (response.ok) {
+            showToast(`Aufzeichnung ${enabled ? 'aktiviert' : 'deaktiviert'}`, 'success');
+        } else {
+            showToast('Fehler beim Ändern der Aufzeichnungseinstellung', 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Error toggling recording:', error);
+        showToast('Fehler beim Ändern der Aufzeichnungseinstellung', 'danger');
+    }
+}
+
+// CSS für Notfallkette
+const emergencyChainStyles = document.createElement('style');
+emergencyChainStyles.textContent = `
+    .chain-step {
+        padding: 8px 12px;
+        margin-bottom: 8px;
+        border-radius: 4px;
+        background: rgba(255,255,255,0.1);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .chain-step.completed {
+        background: rgba(40, 167, 69, 0.2);
+    }
+    .action-log-item {
+        border-left: 3px solid #6c757d;
+    }
+    .action-log-item .badge {
+        font-size: 0.75rem;
+    }
+    #emergencyChainModal .modal-xl {
+        max-width: 1200px;
+    }
+    #emergencyChainModal .card {
+        height: 100%;
+    }
+    #emergencyChainModal .btn-lg {
+        padding: 12px 20px;
+        font-size: 1rem;
+    }
+`;
+document.head.appendChild(emergencyChainStyles);

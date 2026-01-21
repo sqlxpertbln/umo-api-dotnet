@@ -462,3 +462,185 @@ echo "Notrufgeräte: $(check_data_exists '/ServiceHub/devices')"
 echo ""
 echo "Seed-Daten erfolgreich geladen!"
 echo "Endzeit: $(date)"
+
+
+# ============================================
+# AKTIVE NOTRUFE / ALARME (Emergency Alerts)
+# ============================================
+echo ""
+echo "=== Erstelle aktive Notrufe für Tests ==="
+
+# Mindestens 5 aktive Alarme für verschiedene Klienten
+ALERT_TYPES=("FallDetection:Critical" "ManualAlert:High" "InactivityAlert:Medium" "HeartRateAlert:Critical" "SmokeDetected:Critical" "LowBattery:Low" "DeviceOffline:Medium")
+
+for i in {0..6}; do
+    IFS=':' read -r TYPE PRIO <<< "${ALERT_TYPES[$i]}"
+    CLIENT_ID=$(( (i % 5) + 1 ))
+    
+    post_data "/ServiceHub/alerts" "{
+        \"clientId\": $CLIENT_ID,
+        \"alertType\": \"$TYPE\",
+        \"priority\": \"$PRIO\",
+        \"status\": \"New\",
+        \"callerNumber\": \"+49 800 555$((1000+i))\",
+        \"location\": \"Wohnzimmer\",
+        \"notes\": \"Automatisch generierter Testalarm vom Seed-Skript\",
+        \"heartRate\": $([ "$TYPE" == "HeartRateAlert" ] && echo "145" || echo "null"),
+        \"batteryLevel\": $([ "$TYPE" == "LowBattery" ] && echo "15" || echo "85")
+    }"
+    echo "Alarm $((i+1)) erstellt: $TYPE ($PRIO) für Klient $CLIENT_ID"
+done
+
+echo "Aktive Notrufe erstellt: 7"
+
+# ============================================
+# MEDIKAMENTENLISTEN (Client Medications)
+# ============================================
+echo ""
+echo "=== Erstelle Medikamentenlisten ==="
+
+# Typische Medikamente für ältere Hausnotruf-Teilnehmer
+MEDICATIONS=(
+    "Metoprolol:50mg:2x täglich:Herz-Kreislauf:Betablocker zur Blutdrucksenkung"
+    "Ramipril:5mg:1x morgens:Herz-Kreislauf:ACE-Hemmer gegen Bluthochdruck"
+    "Simvastatin:20mg:1x abends:Cholesterin:Cholesterinsenker"
+    "Metformin:500mg:2x täglich:Diabetes:Blutzuckersenker"
+    "L-Thyroxin:75µg:1x morgens nüchtern:Schilddrüse:Schilddrüsenhormon"
+    "Pantoprazol:40mg:1x morgens:Magen:Magenschutz"
+    "ASS:100mg:1x täglich:Herz-Kreislauf:Blutverdünner"
+    "Bisoprolol:2.5mg:1x morgens:Herz-Kreislauf:Betablocker"
+    "Torasemid:10mg:1x morgens:Herz-Kreislauf:Entwässerung"
+    "Marcumar:3mg:nach INR:Herz-Kreislauf:Gerinnungshemmer"
+    "Insulin Lantus:20IE:1x abends:Diabetes:Langzeitinsulin"
+    "Novaminsulfon:500mg:bei Bedarf:Schmerz:Schmerzmittel"
+    "Ibuprofen:400mg:bei Bedarf:Schmerz:Entzündungshemmer"
+    "Omeprazol:20mg:1x morgens:Magen:Magenschutz"
+    "Amlodipin:5mg:1x täglich:Herz-Kreislauf:Kalziumantagonist"
+)
+
+# Verteile Medikamente auf die ersten 10 Klienten
+for CLIENT_ID in {1..10}; do
+    # Jeder Klient bekommt 3-6 Medikamente
+    NUM_MEDS=$(( (CLIENT_ID % 4) + 3 ))
+    
+    for j in $(seq 0 $((NUM_MEDS - 1))); do
+        MED_INDEX=$(( (CLIENT_ID + j) % ${#MEDICATIONS[@]} ))
+        IFS=':' read -r NAME DOSE FREQ CAT NOTES <<< "${MEDICATIONS[$MED_INDEX]}"
+        
+        post_data "/emergencychain/clients/$CLIENT_ID/medications" "{
+            \"medicationName\": \"$NAME\",
+            \"dosage\": \"$DOSE\",
+            \"frequency\": \"$FREQ\",
+            \"category\": \"$CAT\",
+            \"prescribedBy\": \"Dr. Hausarzt\",
+            \"startDate\": \"2024-01-01\",
+            \"notes\": \"$NOTES\",
+            \"isActive\": true
+        }"
+    done
+    echo "Medikamente für Klient $CLIENT_ID erstellt: $NUM_MEDS Einträge"
+done
+
+echo "Medikamentenlisten erstellt für 10 Klienten"
+
+# ============================================
+# AUFZEICHNUNGSEINSTELLUNGEN
+# ============================================
+echo ""
+echo "=== Setze Aufzeichnungseinstellungen ==="
+
+# Aktiviere Aufzeichnung für 5 Klienten (mit Einwilligung)
+for CLIENT_ID in 1 3 5 7 9; do
+    curl -s -X PUT "$API_BASE/emergencychain/clients/$CLIENT_ID/recording" \
+        -H "Content-Type: application/json" \
+        -d "{
+            \"recordingEnabled\": true,
+            \"recordingConsent\": true,
+            \"consentDate\": \"$(date -I)\"
+        }" > /dev/null 2>&1
+    echo "Aufzeichnung aktiviert für Klient $CLIENT_ID"
+done
+
+echo "Aufzeichnungseinstellungen gesetzt"
+
+# ============================================
+# DISPONENTEN
+# ============================================
+echo ""
+echo "=== Erstelle Disponenten ==="
+
+DISPATCHERS=(
+    "Anna:Schmidt:aschmidt:101:Online:Schichtleiter"
+    "Michael:Weber:mweber:102:Online:Disponent"
+    "Sandra:Koch:skoch:103:Pause:Disponent"
+    "Thomas:Bauer:tbauer:104:Offline:Disponent"
+    "Julia:Richter:jrichter:105:Online:Disponent"
+)
+
+for i in {0..4}; do
+    IFS=':' read -r FIRST LAST USER EXT STATUS ROLE <<< "${DISPATCHERS[$i]}"
+    post_data "/ServiceHub/dispatchers" "{
+        \"firstName\": \"$FIRST\",
+        \"lastName\": \"$LAST\",
+        \"username\": \"$USER\",
+        \"extension\": \"$EXT\",
+        \"status\": \"$STATUS\",
+        \"role\": \"$ROLE\",
+        \"isAvailable\": $([ "$STATUS" == "Online" ] && echo "true" || echo "false"),
+        \"email\": \"$USER@notrufzentrale.de\"
+    }"
+    echo "Disponent $((i+1)) erstellt: $FIRST $LAST ($STATUS)"
+done
+
+echo "Disponenten erstellt: 5"
+
+# ============================================
+# ANRUFPROTOKOLL (Call History)
+# ============================================
+echo ""
+echo "=== Erstelle Anrufprotokoll ==="
+
+CALL_TYPES=("Emergency:Inbound" "Callback:Outbound" "Test:Inbound" "Followup:Outbound" "Manual:Inbound")
+
+for i in {0..9}; do
+    IFS=':' read -r CTYPE DIR <<< "${CALL_TYPES[$((i % 5))]}"
+    CLIENT_ID=$(( (i % 10) + 1 ))
+    DURATION=$(( (i + 1) * 30 + 60 ))
+    
+    post_data "/ServiceHub/calls" "{
+        \"clientId\": $CLIENT_ID,
+        \"direction\": \"$DIR\",
+        \"callerNumber\": \"+49 800 555$((1000+i))\",
+        \"calleeNumber\": \"+49 30 123456$((i))\",
+        \"dispatcherId\": $(( (i % 5) + 1 )),
+        \"status\": \"Completed\",
+        \"callType\": \"$CTYPE\",
+        \"duration\": $DURATION,
+        \"notes\": \"Testanruf vom Seed-Skript\",
+        \"recordingAvailable\": $([ $((i % 2)) -eq 0 ] && echo "true" || echo "false")
+    }"
+    echo "Anruf $((i+1)) erstellt: $CTYPE ($DIR) - ${DURATION}s"
+done
+
+echo "Anrufprotokoll erstellt: 10 Einträge"
+
+# ============================================
+# FINALE ZUSAMMENFASSUNG
+# ============================================
+echo ""
+echo "=========================================="
+echo "=== SEED-DATEN VOLLSTÄNDIG GELADEN ==="
+echo "=========================================="
+echo ""
+echo "Klienten:            $(check_data_exists '/clients')"
+echo "Geräte:              $(check_data_exists '/devices')"
+echo "Direct Provider:     $(check_data_exists '/directProvider')"
+echo "Professional Provider: $(check_data_exists '/professionalProvider')"
+echo "Notrufgeräte:        $(check_data_exists '/ServiceHub/devices')"
+echo "Notfallkontakte:     $(check_data_exists '/ServiceHub/contacts')"
+echo "Aktive Alarme:       $(check_data_exists '/ServiceHub/alerts')"
+echo "Disponenten:         $(check_data_exists '/ServiceHub/dispatchers')"
+echo "Anrufprotokoll:      $(check_data_exists '/ServiceHub/calls')"
+echo ""
+echo "Endzeit: $(date)"
+echo "=========================================="

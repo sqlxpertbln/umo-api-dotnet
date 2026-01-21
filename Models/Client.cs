@@ -44,6 +44,28 @@ public class Client
     
     [MaxLength(100)]
     public string? BooleanOptions { get; set; }
+    
+    // === Hausnotruf-Einstellungen ===
+    
+    /// <summary>
+    /// Erlaubt die Aufzeichnung von Notruf-Gesprächen für Dokumentationszwecke
+    /// </summary>
+    public bool AllowCallRecording { get; set; } = false;
+    
+    /// <summary>
+    /// Einverständniserklärung für Aufzeichnung wurde unterschrieben
+    /// </summary>
+    public bool RecordingConsentSigned { get; set; } = false;
+    
+    /// <summary>
+    /// Datum der Einverständniserklärung
+    /// </summary>
+    public DateTime? RecordingConsentDate { get; set; }
+    
+    /// <summary>
+    /// Aufbewahrungsdauer für Aufzeichnungen in Tagen (Standard: 90 Tage)
+    /// </summary>
+    public int RecordingRetentionDays { get; set; } = 90;
 }
 
 /// <summary>
@@ -354,6 +376,84 @@ public class ClientDisease
     
     [MaxLength(500)]
     public string? Notes { get; set; }
+}
+
+/// <summary>
+/// Represents a medication for a client (Medikamentenliste für Hausnotruf)
+/// </summary>
+public class ClientMedication
+{
+    [Key]
+    public int Id { get; set; }
+    
+    public int ClientId { get; set; }
+    [ForeignKey("ClientId")]
+    public virtual ClientDetails? Client { get; set; }
+    
+    public int MandantId { get; set; }
+    
+    /// <summary>
+    /// Name des Medikaments
+    /// </summary>
+    [MaxLength(200)]
+    public string MedicationName { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Wirkstoff
+    /// </summary>
+    [MaxLength(200)]
+    public string? ActiveIngredient { get; set; }
+    
+    /// <summary>
+    /// Dosierung (z.B. "100mg")
+    /// </summary>
+    [MaxLength(100)]
+    public string? Dosage { get; set; }
+    
+    /// <summary>
+    /// Einnahmefrequenz (z.B. "2x täglich", "morgens")
+    /// </summary>
+    [MaxLength(100)]
+    public string? Frequency { get; set; }
+    
+    /// <summary>
+    /// Einnahmezeit (z.B. "08:00, 20:00")
+    /// </summary>
+    [MaxLength(100)]
+    public string? TimeOfDay { get; set; }
+    
+    /// <summary>
+    /// Verschreibender Arzt
+    /// </summary>
+    [MaxLength(200)]
+    public string? PrescribedBy { get; set; }
+    
+    /// <summary>
+    /// Verschreibungsdatum
+    /// </summary>
+    public DateTime? PrescribedDate { get; set; }
+    
+    /// <summary>
+    /// Wichtige Hinweise für Rettungsdienst (z.B. "Blutverduenner", "Wechselwirkungen")
+    /// </summary>
+    [MaxLength(500)]
+    public string? EmergencyNotes { get; set; }
+    
+    /// <summary>
+    /// Ist das Medikament aktuell aktiv?
+    /// </summary>
+    public bool IsActive { get; set; } = true;
+    
+    /// <summary>
+    /// Priorität für Notfall-Übergabe (1 = höchste)
+    /// </summary>
+    public int Priority { get; set; } = 5;
+    
+    /// <summary>
+    /// Kategorie (z.B. "Herzmedikament", "Blutverduenner", "Schmerzmittel")
+    /// </summary>
+    [MaxLength(100)]
+    public string? Category { get; set; }
 }
 
 /// <summary>

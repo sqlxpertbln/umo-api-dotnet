@@ -14,6 +14,9 @@ builder.Services.AddDbContext<UMOApiDbContext>(options =>
 // Register sipgate service
 builder.Services.AddSingleton<ISipgateService, SipgateService>();
 
+// Register SIPSorcery telephony service
+builder.Services.AddSingleton<SipSorceryTelephonyService>();
+
 // Configure CORS for web client
 builder.Services.AddCors(options =>
 {
@@ -56,6 +59,17 @@ using (var scope = app.Services.CreateScope())
     
     // Seed Service Hub data
     await SeedServiceHubDataAsync(context);
+    
+    // Initialize SIPSorcery telephony service
+    try
+    {
+        var telephonyService = scope.ServiceProvider.GetRequiredService<SipSorceryTelephonyService>();
+        await telephonyService.InitializeAsync();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Telefonie-Service konnte nicht initialisiert werden: {ex.Message}");
+    }
 }
 
 // Configure the HTTP request pipeline.

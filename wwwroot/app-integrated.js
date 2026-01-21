@@ -8,10 +8,10 @@ let currentSection = 'dashboard';
 // SIP/WebRTC Configuration for VoIP
 // ============================================
 const sipConfig = {
-    server: 'sipconnect.sipgate.de',
-    wsServer: 'wss://sipconnect.sipgate.de',
-    username: '3938564t0',
-    password: 'VEWqXdhf9wty',
+    server: 'sipgate.de',
+    wsServer: 'wss://sip.sipgate.de',
+    username: '3938564e0',
+    password: 'ihFauejmdjkb',
     domain: 'sipgate.de'
 };
 
@@ -142,10 +142,10 @@ async function loadDashboard() {
         const directProviders = await directRes.json();
         const profProviders = await profRes.json();
         
-        document.getElementById('total-clients').textContent = clients.totalCount || clients.length || 0;
-        document.getElementById('total-devices').textContent = devices.totalCount || devices.length || 0;
-        document.getElementById('total-direct-providers').textContent = directProviders.totalCount || directProviders.length || 0;
-        document.getElementById('total-professional-providers').textContent = profProviders.totalCount || profProviders.length || 0;
+        document.getElementById('total-clients').textContent = clients.count || clients.totalCount || (clients.results ? clients.results.length : 0) || 0;
+        document.getElementById('total-devices').textContent = devices.count || devices.totalCount || (devices.results ? devices.results.length : 0) || 0;
+        document.getElementById('total-direct-providers').textContent = directProviders.count || directProviders.totalCount || (directProviders.results ? directProviders.results.length : 0) || 0;
+        document.getElementById('total-professional-providers').textContent = profProviders.count || profProviders.totalCount || (profProviders.results ? profProviders.results.length : 0) || 0;
         
         // Load Service Hub stats
         try {
@@ -167,7 +167,7 @@ async function loadDashboard() {
         }
         
         // Load recent clients
-        loadRecentClients(clients.items || clients || []);
+        loadRecentClients(clients.results || clients.items || clients || []);
         
     } catch (error) {
         console.error('Error loading dashboard:', error);
@@ -190,9 +190,9 @@ function loadRecentClients(clients) {
                 <li class="list-group-item d-flex justify-content-between align-items-center">
                     <div>
                         <strong>${c.firstName || ''} ${c.lastName || ''}</strong>
-                        <br><small class="text-muted">ID: ${c.id || c.mandantId}-${c.clientId || ''}</small>
+                        <br><small class="text-muted">Nr: ${c.nummer || c.id}</small>
                     </div>
-                    <span class="badge ${c.isActive ? 'bg-success' : 'bg-secondary'}">${c.isActive ? 'Aktiv' : 'Inaktiv'}</span>
+                    <span class="badge ${c.status === 'Aktiv' ? 'bg-success' : 'bg-secondary'}">${c.status || 'Unbekannt'}</span>
                 </li>
             `).join('')}
         </ul>
@@ -236,15 +236,15 @@ async function loadClients() {
     try {
         const response = await fetch(`${API_BASE}/clients`);
         const data = await response.json();
-        const clients = data.items || data || [];
+        const clients = data.results || data.items || data || [];
         
         const tbody = document.getElementById('clients-table-body');
         tbody.innerHTML = clients.map(c => `
             <tr>
-                <td>${c.mandantId || 1}-${c.clientId || c.id}</td>
+                <td>${c.mandantId || 1}-${c.nummer || c.clientId || c.id}</td>
                 <td>${c.firstName || ''} ${c.lastName || ''}</td>
-                <td>${c.birthDate ? new Date(c.birthDate).toLocaleDateString('de-DE') : '-'}</td>
-                <td><span class="status-badge ${c.isActive ? 'status-active' : 'status-inactive'}">${c.isActive ? 'Aktiv' : 'Inaktiv'}</span></td>
+                <td>${c.birthDay ? new Date(c.birthDay).toLocaleDateString('de-DE') : '-'}</td>
+                <td><span class="status-badge ${c.status === 'Aktiv' ? 'status-active' : 'status-inactive'}">${c.status || 'Unbekannt'}</span></td>
                 <td>
                     <button class="btn btn-sm btn-outline-primary btn-action" onclick="viewClient(${c.mandantId || 1}, ${c.clientId || c.id})">
                         <i class="bi bi-eye"></i>
@@ -651,111 +651,118 @@ async function checkActiveAlerts() {
 }
 
 // ============================================
-// SOFTPHONE / VoIP Functions with SIP.js
+// SOFTPHONE / VoIP Functions with SIP.js Simple
 // ============================================
 
 async function initSoftphone() {
     updatePhoneStatus('offline', 'Verbinde...');
     
-    // Create audio element for remote audio
-    phoneState.remoteAudio = new Audio();
+    // Create audio elements for remote audio
+    phoneState.remoteAudio = document.createElement('audio');
+    phoneState.remoteAudio.id = 'remoteAudio';
     phoneState.remoteAudio.autoplay = true;
     document.body.appendChild(phoneState.remoteAudio);
     
     try {
         // Check if SIP.js is loaded
         if (typeof SIP === 'undefined') {
-            console.error('SIP.js not loaded');
+            console.error('SIP.js not loaded - window.SIP:', window.SIP);
             updatePhoneStatus('offline', 'SIP.js fehlt');
             return;
         }
         
-        // Load SIP configuration from server
-        let config = sipConfig;
-        try {
-            const configResponse = await fetch(`${API_BASE}/servicehub/sip-config`);
-            if (configResponse.ok) {
-                const serverConfig = await configResponse.json();
-                if (serverConfig && serverConfig.sipServer) {
-                    config = {
-                        server: serverConfig.sipServer,
-                        wsServer: serverConfig.webSocketUrl || `wss://${serverConfig.sipServer}`,
-                        username: serverConfig.sipUsername,
-                        password: serverConfig.sipPassword,
-                        domain: serverConfig.sipDomain || serverConfig.sipServer
-                    };
-                }
-            }
-        } catch (e) {
-            console.log('Using default SIP config:', e);
+        console.log('SIP.js loaded successfully');
+        console.log('SIP object keys:', Object.keys(SIP));
+        console.log('SIP.Web:', SIP.Web);
+        console.log('SIP.Web.Simple:', SIP.Web && SIP.Web.Simple);
+        
+        // Use hardcoded SIP configuration for Sipgate
+        const config = {
+            server: 'sipgate.de',
+            wsServer: 'wss://sip.sipgate.de',
+            username: '3938564e0',
+            password: 'ihFauejmdjkb',
+            domain: 'sipgate.de'
+        };
+        
+        console.log('Initializing SIP.js Simple with config:', { server: config.server, username: config.username, wsServer: config.wsServer });
+        
+        // Check if SIP.Web.Simple exists
+        if (!SIP.Web || !SIP.Web.Simple) {
+            console.error('SIP.Web.Simple not available');
+            updatePhoneStatus('offline', 'SIP.js Simple fehlt');
+            return;
         }
         
-        console.log('Initializing SIP with config:', { server: config.server, username: config.username });
-        
-        // Create SIP User Agent
-        const uri = SIP.UserAgent.makeURI(`sip:${config.username}@${config.domain}`);
-        
-        const transportOptions = {
-            server: config.wsServer,
-            traceSip: true
-        };
-        
-        const userAgentOptions = {
-            uri: uri,
-            transportOptions: transportOptions,
-            authorizationUsername: config.username,
-            authorizationPassword: config.password,
-            displayName: 'UMO Leitstelle',
-            sessionDescriptionHandlerFactoryOptions: {
-                constraints: {
-                    audio: true,
-                    video: false
-                },
-                peerConnectionConfiguration: {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' }
-                    ]
+        // Use SIP.js Simple API for easier WebRTC calls
+        const simpleOptions = {
+            media: {
+                remote: {
+                    audio: phoneState.remoteAudio
                 }
             },
-            delegate: {
-                onInvite: (invitation) => {
-                    handleIncomingCall(invitation);
+            ua: {
+                uri: `sip:${config.username}@${config.domain}`,
+                wsServers: [config.wsServer],
+                traceSip: true,
+                authorizationUser: config.username,
+                password: config.password,
+                displayName: 'UMO Leitstelle',
+                register: true,
+                log: {
+                    level: 'debug'
                 }
             }
         };
         
-        phoneState.userAgent = new SIP.UserAgent(userAgentOptions);
+        console.log('Creating SIP.Web.Simple with URI:', simpleOptions.ua.uri);
+        phoneState.simple = new SIP.Web.Simple(simpleOptions);
         
-        // Start the User Agent
-        await phoneState.userAgent.start();
-        console.log('SIP User Agent started');
-        
-        // Create Registerer
-        phoneState.registerer = new SIP.Registerer(phoneState.userAgent);
-        
-        // Handle registration state changes
-        phoneState.registerer.stateChange.addListener((state) => {
-            console.log('Registration state:', state);
-            switch (state) {
-                case SIP.RegistererState.Registered:
-                    phoneState.registered = true;
-                    updatePhoneStatus('online', 'Bereit');
-                    showToast('Telefon verbunden', 'success');
-                    break;
-                case SIP.RegistererState.Unregistered:
-                    phoneState.registered = false;
-                    updatePhoneStatus('offline', 'Nicht registriert');
-                    break;
-                case SIP.RegistererState.Terminated:
-                    phoneState.registered = false;
-                    updatePhoneStatus('offline', 'Verbindung beendet');
-                    break;
-            }
+        // Handle registration events
+        phoneState.simple.on('registered', () => {
+            console.log('SIP Registered');
+            phoneState.registered = true;
+            updatePhoneStatus('online', 'Bereit');
+            showToast('Telefon verbunden', 'success');
         });
         
-        // Register
-        await phoneState.registerer.register();
+        phoneState.simple.on('unregistered', () => {
+            console.log('SIP Unregistered');
+            phoneState.registered = false;
+            updatePhoneStatus('offline', 'Nicht registriert');
+        });
+        
+        phoneState.simple.on('registrationFailed', (cause) => {
+            console.error('SIP Registration failed:', cause);
+            phoneState.registered = false;
+            updatePhoneStatus('offline', 'Registrierung fehlgeschlagen');
+            showToast('Telefon-Registrierung fehlgeschlagen: ' + cause, 'danger');
+        });
+        
+        // Handle incoming calls
+        phoneState.simple.on('ringing', () => {
+            console.log('Incoming call ringing');
+            handleIncomingCallSimple();
+        });
+        
+        // Handle call connected
+        phoneState.simple.on('connected', () => {
+            console.log('Call connected');
+            phoneState.inCall = true;
+            phoneState.callStartTime = new Date();
+            updatePhoneStatus('oncall', 'Im Gespräch');
+            document.getElementById('callBtn').style.display = 'none';
+            document.getElementById('hangupBtn').style.display = 'inline-block';
+            callTimer = setInterval(updateCallDuration, 1000);
+        });
+        
+        // Handle call ended
+        phoneState.simple.on('ended', () => {
+            console.log('Call ended');
+            endCallCleanup();
+        });
+        
+        console.log('SIP.js Simple initialized');
         
         // Load recent calls
         loadRecentCalls();
@@ -767,71 +774,24 @@ async function initSoftphone() {
     }
 }
 
-function handleIncomingCall(invitation) {
-    console.log('Incoming call from:', invitation.remoteIdentity.uri.user);
-    
-    const callerNumber = invitation.remoteIdentity.uri.user || 'Unbekannt';
-    const callerDisplay = invitation.remoteIdentity.displayName || callerNumber;
-    
+function handleIncomingCallSimple() {
     // Show incoming call overlay
-    document.getElementById('incomingCallerNumber').textContent = callerDisplay;
+    document.getElementById('incomingCallerNumber').textContent = 'Eingehender Anruf';
     document.getElementById('incomingCallOverlay').classList.add('visible');
     
-    // Store the invitation for answering
-    phoneState.currentSession = invitation;
-    
-    // Play ringtone (optional)
-    // playRingtone();
-    
-    // Set up invitation state change handler
-    invitation.stateChange.addListener((state) => {
-        console.log('Invitation state:', state);
-        switch (state) {
-            case SIP.SessionState.Terminated:
-                document.getElementById('incomingCallOverlay').classList.remove('visible');
-                if (phoneState.inCall) {
-                    endCallCleanup();
-                }
-                break;
-        }
-    });
-    
     // Log incoming call
-    logCall('Inbound', callerNumber);
+    logCall('Inbound', 'Unbekannt');
 }
 
 async function answerCall() {
-    if (!phoneState.currentSession) {
-        console.error('No incoming call to answer');
+    if (!phoneState.simple) {
+        console.error('No softphone instance');
         return;
     }
     
     try {
         document.getElementById('incomingCallOverlay').classList.remove('visible');
-        
-        const options = {
-            sessionDescriptionHandlerOptions: {
-                constraints: {
-                    audio: true,
-                    video: false
-                }
-            }
-        };
-        
-        await phoneState.currentSession.accept(options);
-        
-        phoneState.inCall = true;
-        phoneState.callStartTime = new Date();
-        
-        updatePhoneStatus('oncall', 'Im Gespräch');
-        document.getElementById('callBtn').style.display = 'none';
-        document.getElementById('hangupBtn').style.display = 'inline-block';
-        
-        callTimer = setInterval(updateCallDuration, 1000);
-        
-        // Setup audio
-        setupSessionAudio(phoneState.currentSession);
-        
+        phoneState.simple.answer();
     } catch (error) {
         console.error('Error answering call:', error);
         showToast('Fehler beim Annehmen des Anrufs', 'danger');
@@ -839,11 +799,10 @@ async function answerCall() {
 }
 
 function rejectCall() {
-    if (phoneState.currentSession) {
-        phoneState.currentSession.reject();
+    if (phoneState.simple) {
+        phoneState.simple.reject();
     }
     document.getElementById('incomingCallOverlay').classList.remove('visible');
-    phoneState.currentSession = null;
 }
 
 async function makeCall() {
@@ -852,7 +811,7 @@ async function makeCall() {
         return;
     }
     
-    if (!phoneState.userAgent || !phoneState.registered) {
+    if (!phoneState.simple || !phoneState.registered) {
         showToast('Telefon nicht verbunden', 'danger');
         return;
     }
@@ -869,40 +828,8 @@ async function makeCall() {
             }
         }
         
-        const target = SIP.UserAgent.makeURI(`sip:${targetNumber}@${sipConfig.domain}`);
-        
-        const inviter = new SIP.Inviter(phoneState.userAgent, target, {
-            sessionDescriptionHandlerOptions: {
-                constraints: {
-                    audio: true,
-                    video: false
-                }
-            }
-        });
-        
-        phoneState.currentSession = inviter;
-        
-        // Handle session state changes
-        inviter.stateChange.addListener((state) => {
-            console.log('Outgoing call state:', state);
-            switch (state) {
-                case SIP.SessionState.Establishing:
-                    updatePhoneStatus('oncall', 'Verbinde...');
-                    break;
-                case SIP.SessionState.Established:
-                    updatePhoneStatus('oncall', 'Im Gespräch');
-                    phoneState.inCall = true;
-                    phoneState.callStartTime = new Date();
-                    callTimer = setInterval(updateCallDuration, 1000);
-                    setupSessionAudio(inviter);
-                    break;
-                case SIP.SessionState.Terminated:
-                    endCallCleanup();
-                    break;
-            }
-        });
-        
-        await inviter.invite();
+        // Use SIP.js Simple call method
+        phoneState.simple.call(`sip:${targetNumber}@${sipConfig.domain}`);
         
         document.getElementById('callBtn').style.display = 'none';
         document.getElementById('hangupBtn').style.display = 'inline-block';
@@ -917,28 +844,10 @@ async function makeCall() {
     }
 }
 
-function setupSessionAudio(session) {
-    const sessionDescriptionHandler = session.sessionDescriptionHandler;
-    if (sessionDescriptionHandler && sessionDescriptionHandler.peerConnection) {
-        const pc = sessionDescriptionHandler.peerConnection;
-        
-        pc.ontrack = (event) => {
-            console.log('Remote track received');
-            if (event.streams && event.streams[0]) {
-                phoneState.remoteAudio.srcObject = event.streams[0];
-            }
-        };
-    }
-}
-
 function hangupCall() {
-    if (phoneState.currentSession) {
+    if (phoneState.simple) {
         try {
-            if (phoneState.currentSession.state === SIP.SessionState.Established) {
-                phoneState.currentSession.bye();
-            } else {
-                phoneState.currentSession.cancel();
-            }
+            phoneState.simple.hangup();
         } catch (error) {
             console.error('Error hanging up:', error);
         }
@@ -1007,23 +916,19 @@ function callNumber(number) {
 }
 
 function toggleMute() {
-    if (!phoneState.currentSession || !phoneState.inCall) return;
+    if (!phoneState.simple || !phoneState.inCall) return;
     
     phoneState.muted = !phoneState.muted;
     const btn = document.getElementById('muteBtn');
     btn.innerHTML = phoneState.muted ? '<i class="bi bi-mic-mute"></i>' : '<i class="bi bi-mic"></i>';
     btn.classList.toggle('active', phoneState.muted);
     
-    // Mute/unmute the audio track
+    // Mute/unmute using SIP.js Simple
     try {
-        const sessionDescriptionHandler = phoneState.currentSession.sessionDescriptionHandler;
-        if (sessionDescriptionHandler && sessionDescriptionHandler.peerConnection) {
-            const senders = sessionDescriptionHandler.peerConnection.getSenders();
-            senders.forEach(sender => {
-                if (sender.track && sender.track.kind === 'audio') {
-                    sender.track.enabled = !phoneState.muted;
-                }
-            });
+        if (phoneState.muted) {
+            phoneState.simple.mute();
+        } else {
+            phoneState.simple.unmute();
         }
     } catch (error) {
         console.error('Error toggling mute:', error);
@@ -1031,19 +936,19 @@ function toggleMute() {
 }
 
 function toggleHold() {
-    if (!phoneState.currentSession || !phoneState.inCall) return;
+    if (!phoneState.simple || !phoneState.inCall) return;
     
     phoneState.onHold = !phoneState.onHold;
     const btn = document.getElementById('holdBtn');
     btn.classList.toggle('active', phoneState.onHold);
     updatePhoneStatus('oncall', phoneState.onHold ? 'Gehalten' : 'Im Gespräch');
     
-    // Hold/unhold the session
+    // Hold/unhold using SIP.js Simple
     try {
         if (phoneState.onHold) {
-            phoneState.currentSession.hold();
+            phoneState.simple.hold();
         } else {
-            phoneState.currentSession.unhold();
+            phoneState.simple.unhold();
         }
     } catch (error) {
         console.error('Error toggling hold:', error);

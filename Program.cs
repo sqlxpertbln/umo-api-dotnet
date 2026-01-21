@@ -51,8 +51,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<UMOApiDbContext>();
-    // Delete and recreate database to ensure schema is up to date
-    context.Database.EnsureDeleted();
+    // Ensure database is created (without deleting existing data)
     context.Database.EnsureCreated();
     
     // Seed Service Hub data

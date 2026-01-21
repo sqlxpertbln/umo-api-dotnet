@@ -1,0 +1,37 @@
+# UMO API - Docker Compose
+# Startet die komplette Anwendung mit einem Befehl
+#
+# Verwendung:
+#   docker-compose up -d        # Starten im Hintergrund
+#   docker-compose down         # Stoppen
+#   docker-compose logs -f      # Logs anzeigen
+
+version: '3.8'
+
+services:
+  umo-api:
+    build:
+      context: ./UMOApi
+      dockerfile: Dockerfile
+    container_name: umo-api
+    restart: unless-stopped
+    ports:
+      - "5000:80"
+    volumes:
+      # Persistente Datenbank außerhalb des Containers
+      - umo-data:/app/data
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/clients?start=0&count=1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "com.umo.description=UMO API Backend mit integrierter SQLite Datenbank"
+
+volumes:
+  umo-data:
+    driver: local

@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: umo-api
+    env: docker
+    region: frankfurt
+    plan: free
+    healthCheckPath: /swagger
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:10000

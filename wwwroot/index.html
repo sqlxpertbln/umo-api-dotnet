@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UMO API Client</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --sidebar-width: 250px;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: var(--sidebar-width);
+            background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%);
+            padding-top: 20px;
+            z-index: 1000;
+        }
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.8);
+            padding: 12px 20px;
+            margin: 2px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.15);
+            color: #fff;
+        }
+        .sidebar .nav-link i {
+            margin-right: 10px;
+            width: 20px;
+        }
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .brand {
+            color: #fff;
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 10px 20px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: #fff;
+            border-bottom: 1px solid #eee;
+            font-weight: 600;
+            padding: 15px 20px;
+            border-radius: 12px 12px 0 0 !important;
+        }
+        .table {
+            margin-bottom: 0;
+        }
+        .table th {
+            border-top: none;
+            font-weight: 600;
+            color: #495057;
+            background-color: #f8f9fa;
+        }
+        .table td {
+            vertical-align: middle;
+        }
+        .btn-action {
+            padding: 5px 10px;
+            font-size: 0.85rem;
+        }
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        .status-active {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-inactive {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .modal-header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%);
+            color: #fff;
+            border-radius: 0;
+        }
+        .modal-header .btn-close {
+            filter: brightness(0) invert(1);
+        }
+        .form-label {
+            font-weight: 500;
+            color: #495057;
+        }
+        .pagination {
+            margin-bottom: 0;
+        }
+        .search-box {
+            max-width: 300px;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .stats-card.green {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+        .stats-card.orange {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .stats-card.blue {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        .loading-spinner {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+        }
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #6c757d;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+        .detail-value {
+            font-size: 1rem;
+            color: #212529;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="brand">
+            <i class="bi bi-hospital"></i> UMO System
+        </div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link active" href="#" data-section="dashboard">
+                    <i class="bi bi-speedometer2"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-section="clients">
+                    <i class="bi bi-people"></i> Klienten
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-section="devices">
+                    <i class="bi bi-laptop"></i> Geräte
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-section="directProviders">
+                    <i class="bi bi-building"></i> Direct Provider
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-section="professionalProviders">
+                    <i class="bi bi-person-badge"></i> Professional Provider
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-section="systemEntries">
+                    <i class="bi bi-gear"></i> Systemdaten
+                </a>
+            </li>
+            <li class="nav-item mt-3">
+                <a class="nav-link" href="/reports.html" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff;">
+                    <i class="bi bi-graph-up-arrow"></i> Reports & Dashboards
+                </a>
+            </li>
+            <li class="nav-item mt-2">
+                <a class="nav-link" href="/swagger" target="_blank">
+                    <i class="bi bi-code-slash"></i> API Dokumentation
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Dashboard Section -->
+        <section id="dashboard-section" class="content-section">
+            <h2 class="mb-4">Dashboard</h2>
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stats-card">
+                        <div class="stats-number" id="total-clients">0</div>
+                        <div>Klienten</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card green">
+                        <div class="stats-number" id="total-devices">0</div>
+                        <div>Geräte</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card orange">
+                        <div class="stats-number" id="total-direct-providers">0</div>
+                        <div>Direct Provider</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-card blue">
+                        <div class="stats-number" id="total-professional-providers">0</div>
+                        <div>Professional Provider</div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-clock-history"></i> Letzte Klienten
+                        </div>
+                        <div class="card-body">
+                            <div id="recent-clients-list">Laden...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-activity"></i> System Status
+                        </div>
+                        <div class="card-body">
+                            <p><strong>API Status:</strong> <span class="badge bg-success">Online</span></p>
+                            <p><strong>Datenbank:</strong> <span class="badge bg-success">SQLite (Integriert)</span></p>
+                            <p><strong>Version:</strong> 1.0.0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Clients Section -->
+        <section id="clients-section" class="content-section" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Klienten</h2>
+                <button class="btn btn-primary" onclick="showClientModal()">
+                    <i class="bi bi-plus-lg"></i> Neuer Klient
+                </button>
+            </div>
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Klientenliste</span>
+                    <input type="text" class="form-control search-box" placeholder="Suchen..." id="client-search" onkeyup="searchClients()">
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nr.</th>
+                                    <th>Name</th>
+                                    <th>Geburtsdatum</th>
+                                    <th>Status</th>
+                                    <th>Vertragsbeginn</th>
+                                    <th>Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clients-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                    <nav class="mt-3">
+                        <ul class="pagination justify-content-center" id="clients-pagination">
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </section>
+
+        <!-- Devices Section -->
+        <section id="devices-section" class="content-section" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Geräte</h2>
+                <button class="btn btn-primary" onclick="showDeviceModal()">
+                    <i class="bi bi-plus-lg"></i> Neues Gerät
+                </button>
+            </div>
+            <div class="card">
+                <div class="card-header">Geräteliste</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Typ</th>
+                                    <th>Seriennummer</th>
+                                    <th>Hersteller</th>
+                                    <th>Modell</th>
+                                    <th>Status</th>
+                                    <th>Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="devices-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Direct Providers Section -->
+        <section id="directProviders-section" class="content-section" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Direct Provider</h2>
+                <button class="btn btn-primary" onclick="showDirectProviderModal()">
+                    <i class="bi bi-plus-lg"></i> Neuer Provider
+                </button>
+            </div>
+            <div class="card">
+                <div class="card-header">Provider-Liste</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Kontakt</th>
+                                    <th>Telefon</th>
+                                    <th>E-Mail</th>
+                                    <th>Status</th>
+                                    <th>Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="direct-providers-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Professional Providers Section -->
+        <section id="professionalProviders-section" class="content-section" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Professional Provider</h2>
+                <button class="btn btn-primary" onclick="showProfessionalProviderModal()">
+                    <i class="bi bi-plus-lg"></i> Neuer Provider
+                </button>
+            </div>
+            <div class="card">
+                <div class="card-header">Provider-Liste</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Fachgebiet</th>
+                                    <th>Telefon</th>
+                                    <th>E-Mail</th>
+                                    <th>Status</th>
+                                    <th>Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="professional-providers-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- System Entries Section -->
+        <section id="systemEntries-section" class="content-section" style="display: none;">
+            <h2 class="mb-4">Systemdaten</h2>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">Titel</div>
+                        <div class="card-body" id="titles-list"></div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">Präfixe</div>
+                        <div class="card-body" id="prefixes-list"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">Status</div>
+                        <div class="card-body" id="statuses-list"></div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">Familienstand</div>
+                        <div class="card-body" id="marital-statuses-list"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">Rechnungsmethoden</div>
+                        <div class="card-body" id="invoice-methods-list"></div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">Prioritäten</div>
+                        <div class="card-body" id="priorities-list"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">Sprachen</div>
+                        <div class="card-body" id="languages-list"></div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">Tarife</div>
+                        <div class="card-body" id="tarifs-list"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Client Modal -->
+    <div class="modal fade" id="clientModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="clientModalTitle">Neuer Klient</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="clientForm">
+                        <input type="hidden" id="clientId">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Titel</label>
+                                    <select class="form-select" id="clientTitel"></select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Präfix</label>
+                                    <select class="form-select" id="clientPrefix"></select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Vorname *</label>
+                                    <input type="text" class="form-control" id="clientFirstName" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Nachname *</label>
+                                    <input type="text" class="form-control" id="clientLastName" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Geschlecht</label>
+                                    <select class="form-select" id="clientSex">
+                                        <option value="">-- Auswählen --</option>
+                                        <option value="M">Männlich</option>
+                                        <option value="F">Weiblich</option>
+                                        <option value="D">Divers</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Geburtsdatum</label>
+                                    <input type="date" class="form-control" id="clientBirthDay">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Kundennummer</label>
+                                    <input type="number" class="form-control" id="clientNummer">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Status</label>
+                                    <select class="form-select" id="clientStatus"></select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Familienstand</label>
+                                    <select class="form-select" id="clientMaritalStatus"></select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Vertragsbeginn</label>
+                                    <input type="date" class="form-control" id="clientStartContractDate">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Policennummer</label>
+                                    <input type="text" class="form-control" id="clientPolicyNumber">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Sprache</label>
+                                    <select class="form-select" id="clientLanguage"></select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Priorität</label>
+                                    <select class="form-select" id="clientPriority"></select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notiz</label>
+                            <textarea class="form-control" id="clientNote" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="button" class="btn btn-primary" onclick="saveClient()">Speichern</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Client Details Modal -->
+    <div class="modal fade" id="clientDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Klientendetails</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="clientDetailsContent">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Device Modal -->
+    <div class="modal fade" id="deviceModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deviceModalTitle">Neues Gerät</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="deviceForm">
+                        <input type="hidden" id="deviceId">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Gerätetyp *</label>
+                                    <input type="text" class="form-control" id="deviceType" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Seriennummer *</label>
+                                    <input type="text" class="form-control" id="deviceSerialNumber" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Hersteller</label>
+                                    <input type="text" class="form-control" id="deviceManufacturer">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Modell</label>
+                                    <input type="text" class="form-control" id="deviceModel">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Status</label>
+                                    <select class="form-select" id="deviceStatus">
+                                        <option value="Verfügbar">Verfügbar</option>
+                                        <option value="In Benutzung">In Benutzung</option>
+                                        <option value="In Reparatur">In Reparatur</option>
+                                        <option value="Ausgemustert">Ausgemustert</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Kaufdatum</label>
+                                    <input type="date" class="form-control" id="devicePurchaseDate">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Beschreibung</label>
+                            <textarea class="form-control" id="deviceDescription" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="button" class="btn btn-primary" onclick="saveDevice()">Speichern</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Direct Provider Modal -->
+    <div class="modal fade" id="directProviderModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="directProviderModalTitle">Neuer Direct Provider</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="directProviderForm">
+                        <input type="hidden" id="directProviderId">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label class="form-label">Firmenname *</label>
+                                    <input type="text" class="form-control" id="directProviderName" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Vorname</label>
+                                    <input type="text" class="form-control" id="directProviderFirstName">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Nachname</label>
+                                    <input type="text" class="form-control" id="directProviderLastName">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label class="form-label">Straße</label>
+                                    <input type="text" class="form-control" id="directProviderStreet">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Hausnummer</label>
+                                    <input type="text" class="form-control" id="directProviderHouseNumber">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">PLZ</label>
+                                    <input type="text" class="form-control" id="directProviderZipCode">
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label class="form-label">Stadt</label>
+                                    <input type="text" class="form-control" id="directProviderCity">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Telefon</label>
+                                    <input type="tel" class="form-control" id="directProviderPhone">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">E-Mail</label>
+                                    <input type="email" class="form-control" id="directProviderEmail">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" id="directProviderStatus">
+                                <option value="Aktiv">Aktiv</option>
+                                <option value="Inaktiv">Inaktiv</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="button" class="btn btn-primary" onclick="saveDirectProvider()">Speichern</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Professional Provider Modal -->
+    <div class="modal fade" id="professionalProviderModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="professionalProviderModalTitle">Neuer Professional Provider</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="professionalProviderForm">
+                        <input type="hidden" id="professionalProviderId">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Vorname *</label>
+                                    <input type="text" class="form-control" id="professionalProviderFirstName" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Nachname *</label>
+                                    <input type="text" class="form-control" id="professionalProviderLastName" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Fachgebiet</label>
+                                    <input type="text" class="form-control" id="professionalProviderSpecialty">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Lizenznummer</label>
+                                    <input type="text" class="form-control" id="professionalProviderLicenseNumber">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label class="form-label">Straße</label>
+                                    <input type="text" class="form-control" id="professionalProviderStreet">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Hausnummer</label>
+                                    <input type="text" class="form-control" id="professionalProviderHouseNumber">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">PLZ</label>
+                                    <input type="text" class="form-control" id="professionalProviderZipCode">
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label class="form-label">Stadt</label>
+                                    <input type="text" class="form-control" id="professionalProviderCity">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Telefon</label>
+                                    <input type="tel" class="form-control" id="professionalProviderPhone">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">E-Mail</label>
+                                    <input type="email" class="form-control" id="professionalProviderEmail">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" id="professionalProviderStatus">
+                                <option value="Aktiv">Aktiv</option>
+                                <option value="Inaktiv">Inaktiv</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="button" class="btn btn-primary" onclick="saveProfessionalProvider()">Speichern</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Loading Spinner -->
+    <div class="loading-spinner" id="loadingSpinner">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Laden...</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

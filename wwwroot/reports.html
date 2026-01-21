@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UMO Reports & Dashboards</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #1e3a5f;
+            --sidebar-width: 280px;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+        }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: var(--sidebar-width);
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            padding-top: 20px;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.7);
+            padding: 12px 20px;
+            margin: 2px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+        .sidebar .nav-link i {
+            margin-right: 12px;
+            width: 20px;
+        }
+        .sidebar .section-title {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 15px 20px 5px;
+            margin-top: 10px;
+        }
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 25px;
+            min-height: 100vh;
+        }
+        .brand {
+            color: #fff;
+            font-size: 1.4rem;
+            font-weight: bold;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .brand i {
+            font-size: 1.6rem;
+            color: #4facfe;
+        }
+        .card {
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 24px;
+            background: #fff;
+        }
+        .card-header {
+            background-color: #fff;
+            border-bottom: 1px solid #eef2f7;
+            font-weight: 600;
+            padding: 18px 24px;
+            border-radius: 16px 16px 0 0 !important;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card-body {
+            padding: 24px;
+        }
+        .kpi-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        }
+        .kpi-card.green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+        .kpi-card.orange { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .kpi-card.blue { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .kpi-card.purple { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); }
+        .kpi-card.dark { background: linear-gradient(135deg, #434343 0%, #000000 100%); }
+        .kpi-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .kpi-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-top: 8px;
+        }
+        .kpi-change {
+            font-size: 0.85rem;
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .kpi-change.positive { color: #a8ffc4; }
+        .kpi-change.negative { color: #ffb3b3; }
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        .chart-container-sm {
+            position: relative;
+            height: 200px;
+        }
+        .table-report th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748b;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .table-report td {
+            padding: 16px 12px;
+            vertical-align: middle;
+        }
+        .progress-bar-custom {
+            height: 8px;
+            border-radius: 4px;
+            background-color: #e2e8f0;
+        }
+        .progress-bar-custom .fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-good { background-color: #10b981; }
+        .status-warning { background-color: #f59e0b; }
+        .status-critical { background-color: #ef4444; }
+        .dashboard-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+        .dashboard-subtitle {
+            color: #64748b;
+            font-size: 1rem;
+            margin-bottom: 24px;
+        }
+        .nav-pills-custom .nav-link {
+            color: #64748b;
+            border-radius: 8px;
+            padding: 8px 16px;
+            margin-right: 8px;
+        }
+        .nav-pills-custom .nav-link.active {
+            background-color: var(--primary-color);
+            color: #fff;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+        .metric-label {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        .metric-value {
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .trend-up { color: #10b981; }
+        .trend-down { color: #ef4444; }
+        .trend-stable { color: #64748b; }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">Laden...</span>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="brand">
+            <i class="bi bi-graph-up-arrow"></i> UMO Reports
+        </div>
+        
+        <div class="section-title">Übersicht</div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link active" href="#" data-report="overview">
+                    <i class="bi bi-grid-1x2"></i> Report-Übersicht
+                </a>
+            </li>
+        </ul>
+        
+        <div class="section-title">Geschäftsbereiche</div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-report="marketing">
+                    <i class="bi bi-megaphone"></i> Marketing
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-report="sales">
+                    <i class="bi bi-cart3"></i> Vertrieb
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-report="operations">
+                    <i class="bi bi-gear-wide-connected"></i> Geschäftsbereich
+                </a>
+            </li>
+        </ul>
+        
+        <div class="section-title">Finanzen</div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-report="finance">
+                    <i class="bi bi-currency-euro"></i> Finanzbuchhaltung
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-report="controlling">
+                    <i class="bi bi-speedometer"></i> Controlling
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-report="billing">
+                    <i class="bi bi-receipt"></i> Rechnungswesen
+                </a>
+            </li>
+        </ul>
+        
+        <div class="section-title">Navigation</div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" href="/">
+                    <i class="bi bi-arrow-left"></i> Zurück zur App
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/swagger" target="_blank">
+                    <i class="bi bi-code-slash"></i> API Dokumentation
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Overview Section -->
+        <section id="overview-section" class="report-section">
+            <h1 class="dashboard-title">Report-Übersicht</h1>
+            <p class="dashboard-subtitle">Wählen Sie einen Geschäftsbereich für detaillierte Auswertungen</p>
+            
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100" style="cursor: pointer;" onclick="showReport('marketing')">
+                        <div class="card-body text-center py-5">
+                            <i class="bi bi-megaphone text-primary" style="font-size: 3rem;"></i>
+                            <h4 class="mt-3">Marketing</h4>
+                            <p class="text-muted">Klientenakquise, Regionen, Altersverteilung</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100" style="cursor: pointer;" onclick="showReport('sales')">
+                        <div class="card-body text-center py-5">
+                            <i class="bi bi-cart3 text-success" style="font-size: 3rem;"></i>
+                            <h4 class="mt-3">Vertrieb</h4>
+                            <p class="text-muted">Geräteauslastung, Provider-Performance</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100" style="cursor: pointer;" onclick="showReport('operations')">
+                        <div class="card-body text-center py-5">
+                            <i class="bi bi-gear-wide-connected text-warning" style="font-size: 3rem;"></i>
+                            <h4 class="mt-3">Geschäftsbereich</h4>
+                            <p class="text-muted">Status, Kapazitäten, Workload</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100" style="cursor: pointer;" onclick="showReport('finance')">
+                        <div class="card-body text-center py-5">
+                            <i class="bi bi-currency-euro text-info" style="font-size: 3rem;"></i>
+                            <h4 class="mt-3">Finanzbuchhaltung</h4>
+                            <p class="text-muted">Umsätze, Kosten, Profitabilität</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100" style="cursor: pointer;" onclick="showReport('controlling')">
+                        <div class="card-body text-center py-5">
+                            <i class="bi bi-speedometer text-danger" style="font-size: 3rem;"></i>
+                            <h4 class="mt-3">Controlling</h4>
+                            <p class="text-muted">KPIs, Trends, Benchmarks</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100" style="cursor: pointer;" onclick="showReport('billing')">
+                        <div class="card-body text-center py-5">
+                            <i class="bi bi-receipt text-secondary" style="font-size: 3rem;"></i>
+                            <h4 class="mt-3">Rechnungswesen</h4>
+                            <p class="text-muted">Abrechnungen, Offene Posten</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Marketing Section -->
+        <section id="marketing-section" class="report-section" style="display: none;">
+            <h1 class="dashboard-title"><i class="bi bi-megaphone me-2"></i>Marketing Dashboard</h1>
+            <p class="dashboard-subtitle">Klientenakquise, regionale Verteilung und demografische Analysen</p>
+            
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="kpi-card">
+                        <div class="kpi-value" id="marketing-total-clients">-</div>
+                        <div class="kpi-label">Gesamtklienten</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-card green">
+                        <div class="kpi-value" id="marketing-new-this-month">-</div>
+                        <div class="kpi-label">Neukunden (Monat)</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-card blue">
+                        <div class="kpi-value" id="marketing-new-last-month">-</div>
+                        <div class="kpi-label">Neukunden (Vormonat)</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-card orange">
+                        <div class="kpi-value" id="marketing-growth-rate">-</div>
+                        <div class="kpi-label">Wachstumsrate</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-graph-up me-2"></i>Klientenakquise-Trend (12 Monate)</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="marketing-trend-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-pie-chart me-2"></i>Altersverteilung</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="marketing-age-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-geo-alt me-2"></i>Regionale Verteilung</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="marketing-region-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-translate me-2"></i>Sprachverteilung</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="marketing-language-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sales Section -->
+        <section id="sales-section" class="report-section" style="display: none;">
+            <h1 class="dashboard-title"><i class="bi bi-cart3 me-2"></i>Vertrieb Dashboard</h1>
+            <p class="dashboard-subtitle">Geräteauslastung, Provider-Performance und Tarifanalysen</p>
+            
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="kpi-card blue">
+                        <div class="kpi-value" id="sales-total-devices">-</div>
+                        <div class="kpi-label">Gesamtgeräte</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-card green">
+                        <div class="kpi-value" id="sales-active-devices">-</div>
+                        <div class="kpi-label">Aktive Geräte</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-card orange">
+                        <div class="kpi-value" id="sales-inactive-devices">-</div>
+                        <div class="kpi-label">Inaktive Geräte</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-card purple">
+                        <div class="kpi-value" id="sales-utilization">-</div>
+                        <div class="kpi-label">Auslastung</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-laptop me-2"></i>Geräte nach Typ</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="sales-device-type-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-tags me-2"></i>Klienten nach Tarif</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="sales-tarif-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-trophy me-2"></i>Top Provider Performance</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-report" id="sales-provider-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Rang</th>
+                                            <th>Provider</th>
+                                            <th>Typ</th>
+                                            <th>Klienten</th>
+                                            <th>Performance Score</th>
+                                            <th>Bewertung</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Operations Section -->
+        <section id="operations-section" class="report-section" style="display: none;">
+            <h1 class="dashboard-title"><i class="bi bi-gear-wide-connected me-2"></i>Geschäftsbereich Dashboard</h1>
+            <p class="dashboard-subtitle">Klientenstatus, Kapazitätsauslastung und Provider-Workload</p>
+            
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="kpi-card green">
+                        <div class="kpi-value" id="ops-active-clients">-</div>
+                        <div class="kpi-label">Aktive Klienten</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-card orange">
+                        <div class="kpi-value" id="ops-inactive-clients">-</div>
+                        <div class="kpi-label">Inaktive Klienten</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-card blue">
+                        <div class="kpi-value" id="ops-with-devices">-</div>
+                        <div class="kpi-label">Mit Geräten</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-card purple">
+                        <div class="kpi-value" id="ops-capacity">-</div>
+                        <div class="kpi-label">Kapazitätsauslastung</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-circle-fill me-2"></i>Klienten nach Status</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="ops-status-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-exclamation-triangle me-2"></i>Klienten nach Priorität</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="ops-priority-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-person-workspace me-2"></i>Provider Workload</span>
+                        </div>
+                        <div class="card-body">
+                            <div id="ops-workload-container"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Finance Section -->
+        <section id="finance-section" class="report-section" style="display: none;">
+            <h1 class="dashboard-title"><i class="bi bi-currency-euro me-2"></i>Finanzbuchhaltung Dashboard</h1>
+            <p class="dashboard-subtitle">Umsätze, Kosten und Profitabilitätsanalysen</p>
+            
+            <div class="row mb-4">
+                <div class="col-md-2">
+                    <div class="kpi-card green">
+                        <div class="kpi-value" id="finance-monthly-revenue">-</div>
+                        <div class="kpi-label">Monatsumsatz</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="kpi-card blue">
+                        <div class="kpi-value" id="finance-yearly-revenue">-</div>
+                        <div class="kpi-label">Jahresumsatz</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="kpi-card orange">
+                        <div class="kpi-value" id="finance-costs">-</div>
+                        <div class="kpi-label">Gesamtkosten</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="kpi-card purple">
+                        <div class="kpi-value" id="finance-profit">-</div>
+                        <div class="kpi-label">Nettogewinn</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="kpi-card dark">
+                        <div class="kpi-value" id="finance-margin">-</div>
+                        <div class="kpi-label">Marge</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="kpi-card">
+                        <div class="kpi-value" id="finance-avg-revenue">-</div>
+                        <div class="kpi-label">Ø pro Klient</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-graph-up me-2"></i>Finanztrend (12 Monate)</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="finance-trend-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-pie-chart me-2"></i>Kostenverteilung</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="finance-cost-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-bar-chart me-2"></i>Umsatz nach Tarif</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="finance-tarif-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-star me-2"></i>Top Klienten nach Umsatz</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-report" id="finance-top-clients-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Klient</th>
+                                            <th>Tarif</th>
+                                            <th>Monatlich</th>
+                                            <th>Jährlich</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Controlling Section -->
+        <section id="controlling-section" class="report-section" style="display: none;">
+            <h1 class="dashboard-title"><i class="bi bi-speedometer me-2"></i>Controlling Dashboard</h1>
+            <p class="dashboard-subtitle">Key Performance Indicators, Trends und Benchmarks</p>
+            
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-bullseye me-2"></i>Key Performance Indicators</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="row" id="controlling-kpi-container"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-calendar-range me-2"></i>Jahresvergleich</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="controlling-yoy-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-award me-2"></i>Benchmarks</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="controlling-benchmark-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-lightning me-2"></i>Effizienz-Metriken</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-report" id="controlling-efficiency-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Metrik</th>
+                                            <th>Aktueller Wert</th>
+                                            <th>Einheit</th>
+                                            <th>Trend</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Billing Section -->
+        <section id="billing-section" class="report-section" style="display: none;">
+            <h1 class="dashboard-title"><i class="bi bi-receipt me-2"></i>Rechnungswesen Dashboard</h1>
+            <p class="dashboard-subtitle">Abrechnungen, Zahlungsstatus und offene Posten</p>
+            
+            <div class="row mb-4">
+                <div class="col-md-2">
+                    <div class="kpi-card green">
+                        <div class="kpi-value" id="billing-total-billed">-</div>
+                        <div class="kpi-label">Gesamtabrechnung</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="kpi-card blue">
+                        <div class="kpi-value" id="billing-total-paid">-</div>
+                        <div class="kpi-label">Bezahlt</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="kpi-card orange">
+                        <div class="kpi-value" id="billing-outstanding">-</div>
+                        <div class="kpi-label">Ausstehend</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="kpi-card purple">
+                        <div class="kpi-value" id="billing-invoice-count">-</div>
+                        <div class="kpi-label">Rechnungen</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="kpi-card dark">
+                        <div class="kpi-value" id="billing-overdue">-</div>
+                        <div class="kpi-label">Überfällig</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="kpi-card">
+                        <div class="kpi-value" id="billing-collection-rate">-</div>
+                        <div class="kpi-label">Einzugsrate</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-pie-chart me-2"></i>Zahlungsstatus</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="billing-status-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-clock-history me-2"></i>Aging Report</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="billing-aging-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-graph-up me-2"></i>Abrechnungstrend (12 Monate)</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="billing-trend-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-credit-card me-2"></i>Rechnungsmethoden</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="billing-method-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <span><i class="bi bi-exclamation-circle me-2"></i>Top Offene Posten</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-report" id="billing-outstanding-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Klient</th>
+                                            <th>Abgerechnet</th>
+                                            <th>Bezahlt</th>
+                                            <th>Ausstehend</th>
+                                            <th>Tage überfällig</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="reports.js"></script>
+</body>
+</html>

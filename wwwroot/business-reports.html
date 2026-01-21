@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UMO API - Business Reports</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --sidebar-width: 280px;
+            --header-height: 60px;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: #f8f9fa;
+        }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .sidebar-header h4 {
+            margin: 0;
+            font-weight: 600;
+        }
+        .sidebar-header small {
+            color: rgba(255,255,255,0.6);
+        }
+        .nav-section {
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .nav-section-title {
+            padding: 8px 20px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.5);
+            font-weight: 600;
+        }
+        .nav-link {
+            padding: 10px 20px;
+            color: rgba(255,255,255,0.8);
+            display: flex;
+            align-items: center;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+        .nav-link:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        .nav-link.active {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border-left-color: #0d6efd;
+        }
+        .nav-link i {
+            width: 24px;
+            margin-right: 10px;
+            font-size: 16px;
+        }
+        .main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+        }
+        .top-header {
+            background: white;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .content-area {
+            padding: 30px;
+        }
+        .dashboard-section {
+            display: none;
+        }
+        .dashboard-section.active {
+            display: block;
+        }
+        .kpi-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            height: 100%;
+        }
+        .kpi-card .kpi-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        .kpi-card .kpi-value {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        .kpi-card .kpi-label {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .kpi-card .kpi-trend {
+            font-size: 13px;
+            margin-top: 10px;
+        }
+        .kpi-trend.positive { color: #28a745; }
+        .kpi-trend.negative { color: #dc3545; }
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        .chart-card h6 {
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        .data-table {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .data-table h6 {
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        .table th {
+            font-weight: 600;
+            color: #495057;
+            border-top: none;
+        }
+        .badge-status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .badge-hot { background: #dc3545; color: white; }
+        .badge-warm { background: #ffc107; color: #333; }
+        .badge-cold { background: #17a2b8; color: white; }
+        .badge-active { background: #28a745; color: white; }
+        .badge-completed { background: #6c757d; color: white; }
+        .progress-thin {
+            height: 6px;
+            border-radius: 3px;
+        }
+        .alert-item {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .alert-item.warning { background: #fff3cd; }
+        .alert-item.danger { background: #f8d7da; }
+        .alert-item.info { background: #d1ecf1; }
+        .alert-item i { margin-right: 12px; font-size: 18px; }
+        .back-link {
+            color: rgba(255,255,255,0.6);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        .back-link:hover {
+            color: white;
+        }
+        .back-link i {
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h4><i class="bi bi-graph-up-arrow me-2"></i>Reports</h4>
+            <small>Business Intelligence</small>
+            <a href="index.html" class="back-link">
+                <i class="bi bi-arrow-left"></i> Zurück zur Hauptanwendung
+            </a>
+        </div>
+        
+        <!-- Marketing & CRM -->
+        <div class="nav-section">
+            <div class="nav-section-title">Marketing & CRM</div>
+            <a href="#" class="nav-link active" data-section="marketing-dashboard">
+                <i class="bi bi-megaphone"></i> Marketing Dashboard
+            </a>
+            <a href="#" class="nav-link" data-section="lead-qualification">
+                <i class="bi bi-funnel"></i> Lead-Qualifizierung
+            </a>
+            <a href="#" class="nav-link" data-section="crm-activities">
+                <i class="bi bi-people"></i> CRM Aktivitäten
+            </a>
+        </div>
+        
+        <!-- Sales -->
+        <div class="nav-section">
+            <div class="nav-section-title">Sales / Vertrieb</div>
+            <a href="#" class="nav-link" data-section="sales-dashboard">
+                <i class="bi bi-currency-euro"></i> Sales Dashboard
+            </a>
+            <a href="#" class="nav-link" data-section="sales-pipeline">
+                <i class="bi bi-bar-chart-steps"></i> Sales Pipeline
+            </a>
+        </div>
+        
+        <!-- ERP -->
+        <div class="nav-section">
+            <div class="nav-section-title">ERP</div>
+            <a href="#" class="nav-link" data-section="erp-inventory">
+                <i class="bi bi-box-seam"></i> Lagerverwaltung
+            </a>
+            <a href="#" class="nav-link" data-section="erp-devices">
+                <i class="bi bi-gear"></i> Geräte & Artikel
+            </a>
+            <a href="#" class="nav-link" data-section="erp-medications">
+                <i class="bi bi-capsule"></i> Medikamente
+            </a>
+        </div>
+        
+        <!-- Billing & Finance -->
+        <div class="nav-section">
+            <div class="nav-section-title">Finanzen & Abrechnung</div>
+            <a href="#" class="nav-link" data-section="billing-dashboard">
+                <i class="bi bi-receipt"></i> Abrechnung
+            </a>
+            <a href="#" class="nav-link" data-section="finance-overview">
+                <i class="bi bi-wallet2"></i> Finanzübersicht
+            </a>
+            <a href="#" class="nav-link" data-section="finance-receivables">
+                <i class="bi bi-cash-stack"></i> Forderungen
+            </a>
+        </div>
+        
+        <!-- Legacy Reports -->
+        <div class="nav-section">
+            <div class="nav-section-title">Weitere Reports</div>
+            <a href="reports.html" class="nav-link">
+                <i class="bi bi-file-earmark-bar-graph"></i> Klassische Reports
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="top-header">
+            <div>
+                <h5 class="mb-0" id="section-title">Marketing Dashboard</h5>
+                <small class="text-muted" id="section-subtitle">Kampagnen, Leads und Marketing-Performance</small>
+            </div>
+            <div>
+                <button class="btn btn-outline-secondary btn-sm me-2" onclick="refreshCurrentSection()">
+                    <i class="bi bi-arrow-clockwise"></i> Aktualisieren
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="exportReport()">
+                    <i class="bi bi-download"></i> Export
+                </button>
+            </div>
+        </div>
+
+        <div class="content-area">
+            <!-- Marketing Dashboard -->
+            <div id="marketing-dashboard" class="dashboard-section active">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-primary bg-opacity-10 text-primary">
+                                <i class="bi bi-megaphone"></i>
+                            </div>
+                            <div class="kpi-value" id="mkt-total-campaigns">-</div>
+                            <div class="kpi-label">Kampagnen gesamt</div>
+                            <div class="kpi-trend positive" id="mkt-active-campaigns">- aktiv</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-success bg-opacity-10 text-success">
+                                <i class="bi bi-person-plus"></i>
+                            </div>
+                            <div class="kpi-value" id="mkt-total-leads">-</div>
+                            <div class="kpi-label">Leads gesamt</div>
+                            <div class="kpi-trend positive" id="mkt-new-leads">- neu diesen Monat</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-warning bg-opacity-10 text-warning">
+                                <i class="bi bi-currency-euro"></i>
+                            </div>
+                            <div class="kpi-value" id="mkt-budget">-</div>
+                            <div class="kpi-label">Marketing Budget</div>
+                            <div class="kpi-trend" id="mkt-spend">- ausgegeben</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-info bg-opacity-10 text-info">
+                                <i class="bi bi-graph-up"></i>
+                            </div>
+                            <div class="kpi-value" id="mkt-conversion">-</div>
+                            <div class="kpi-label">Conversion Rate</div>
+                            <div class="kpi-trend" id="mkt-cpl">CPL: -</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-8">
+                        <div class="chart-card">
+                            <h6>Lead-Entwicklung (6 Monate)</h6>
+                            <div class="chart-container">
+                                <canvas id="mkt-lead-trend-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="chart-card">
+                            <h6>Leads nach Quelle</h6>
+                            <div class="chart-container">
+                                <canvas id="mkt-leads-source-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4 mt-2">
+                    <div class="col-md-6">
+                        <div class="chart-card">
+                            <h6>Kampagnen-Performance</h6>
+                            <div class="chart-container">
+                                <canvas id="mkt-campaign-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="data-table">
+                            <h6>Top Kampagnen</h6>
+                            <table class="table table-sm" id="mkt-top-campaigns-table">
+                                <thead>
+                                    <tr>
+                                        <th>Kampagne</th>
+                                        <th>Typ</th>
+                                        <th>Leads</th>
+                                        <th>Conv.</th>
+                                        <th>ROI</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lead Qualification -->
+            <div id="lead-qualification" class="dashboard-section">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-danger bg-opacity-10 text-danger">
+                                <i class="bi bi-fire"></i>
+                            </div>
+                            <div class="kpi-value" id="lq-hot-leads">-</div>
+                            <div class="kpi-label">Hot Leads</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-warning bg-opacity-10 text-warning">
+                                <i class="bi bi-thermometer-half"></i>
+                            </div>
+                            <div class="kpi-value" id="lq-warm-leads">-</div>
+                            <div class="kpi-label">Warm Leads</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-info bg-opacity-10 text-info">
+                                <i class="bi bi-snow"></i>
+                            </div>
+                            <div class="kpi-value" id="lq-cold-leads">-</div>
+                            <div class="kpi-label">Cold Leads</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-success bg-opacity-10 text-success">
+                                <i class="bi bi-check-circle"></i>
+                            </div>
+                            <div class="kpi-value" id="lq-qual-rate">-</div>
+                            <div class="kpi-label">Qualifizierungsrate</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="chart-card">
+                            <h6>Lead-Qualifizierung</h6>
+                            <div class="chart-container">
+                                <canvas id="lq-qualification-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-card">
+                            <h6>Lead-Score Verteilung</h6>
+                            <div class="chart-container">
+                                <canvas id="lq-score-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4 mt-2">
+                    <div class="col-12">
+                        <div class="data-table">
+                            <h6>Qualifizierte Leads</h6>
+                            <table class="table" id="lq-leads-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Unternehmen</th>
+                                        <th>Quelle</th>
+                                        <th>Score</th>
+                                        <th>Wert</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CRM Activities -->
+            <div id="crm-activities" class="dashboard-section">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="crm-total-activities">-</div>
+                            <div class="kpi-label">Aktivitäten gesamt</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="crm-calls">-</div>
+                            <div class="kpi-label">Anrufe</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="crm-emails">-</div>
+                            <div class="kpi-label">E-Mails</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="crm-meetings">-</div>
+                            <div class="kpi-label">Meetings</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="crm-this-week">-</div>
+                            <div class="kpi-label">Diese Woche</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value text-danger" id="crm-overdue">-</div>
+                            <div class="kpi-label">Überfällig</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-8">
+                        <div class="chart-card">
+                            <h6>Aktivitäten (letzte 7 Tage)</h6>
+                            <div class="chart-container">
+                                <canvas id="crm-activity-trend-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="chart-card">
+                            <h6>Nach Typ</h6>
+                            <div class="chart-container">
+                                <canvas id="crm-activity-type-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4 mt-2">
+                    <div class="col-12">
+                        <div class="data-table">
+                            <h6>Aktivitäten nach Mitarbeiter</h6>
+                            <table class="table" id="crm-user-table">
+                                <thead>
+                                    <tr>
+                                        <th>Mitarbeiter</th>
+                                        <th>Gesamt</th>
+                                        <th>Anrufe</th>
+                                        <th>E-Mails</th>
+                                        <th>Meetings</th>
+                                        <th>Conversions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sales Dashboard -->
+            <div id="sales-dashboard" class="dashboard-section">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-success bg-opacity-10 text-success">
+                                <i class="bi bi-currency-euro"></i>
+                            </div>
+                            <div class="kpi-value" id="sales-revenue">-</div>
+                            <div class="kpi-label">Umsatz gesamt</div>
+                            <div class="kpi-trend positive" id="sales-growth">-</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-primary bg-opacity-10 text-primary">
+                                <i class="bi bi-graph-up-arrow"></i>
+                            </div>
+                            <div class="kpi-value" id="sales-pipeline">-</div>
+                            <div class="kpi-label">Pipeline-Wert</div>
+                            <div class="kpi-trend" id="sales-weighted">Gewichtet: -</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-warning bg-opacity-10 text-warning">
+                                <i class="bi bi-trophy"></i>
+                            </div>
+                            <div class="kpi-value" id="sales-winrate">-</div>
+                            <div class="kpi-label">Win Rate</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-info bg-opacity-10 text-info">
+                                <i class="bi bi-cart-check"></i>
+                            </div>
+                            <div class="kpi-value" id="sales-orders">-</div>
+                            <div class="kpi-label">Bestellungen</div>
+                            <div class="kpi-trend" id="sales-avg-order">Ø -</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-8">
+                        <div class="chart-card">
+                            <h6>Umsatzentwicklung</h6>
+                            <div class="chart-container">
+                                <canvas id="sales-revenue-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="chart-card">
+                            <h6>Pipeline nach Phase</h6>
+                            <div class="chart-container">
+                                <canvas id="sales-pipeline-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4 mt-2">
+                    <div class="col-12">
+                        <div class="data-table">
+                            <h6>Top Vertriebsmitarbeiter</h6>
+                            <table class="table" id="sales-reps-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Umsatz</th>
+                                        <th>Deals</th>
+                                        <th>Win Rate</th>
+                                        <th>Ø Deal</th>
+                                        <th>Zielerreichung</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sales Pipeline -->
+            <div id="sales-pipeline" class="dashboard-section">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="pipe-total">-</div>
+                            <div class="kpi-label">Pipeline gesamt</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="pipe-weighted">-</div>
+                            <div class="kpi-label">Gewichteter Wert</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="pipe-opportunities">-</div>
+                            <div class="kpi-label">Offene Opportunities</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="pipe-forecast">-</div>
+                            <div class="kpi-label">Forecast (Monat)</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="chart-card">
+                            <h6>Pipeline Stages</h6>
+                            <div class="chart-container">
+                                <canvas id="pipe-stages-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-card">
+                            <h6>Win/Loss Analyse</h6>
+                            <div class="chart-container">
+                                <canvas id="pipe-winloss-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4 mt-2">
+                    <div class="col-12">
+                        <div class="data-table">
+                            <h6>Top Opportunities</h6>
+                            <table class="table" id="pipe-opportunities-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Kunde</th>
+                                        <th>Wert</th>
+                                        <th>Wahrscheinlichkeit</th>
+                                        <th>Phase</th>
+                                        <th>Erw. Abschluss</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ERP Inventory -->
+            <div id="erp-inventory" class="dashboard-section">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="inv-total">-</div>
+                            <div class="kpi-label">Artikel</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="inv-value">-</div>
+                            <div class="kpi-label">Lagerwert</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value text-warning" id="inv-low">-</div>
+                            <div class="kpi-label">Niedriger Bestand</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value text-danger" id="inv-out">-</div>
+                            <div class="kpi-label">Nicht vorrätig</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value text-warning" id="inv-expiring">-</div>
+                            <div class="kpi-label">Bald ablaufend</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="inv-turnover">-</div>
+                            <div class="kpi-label">Umschlag</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="chart-card">
+                            <h6>Bestand nach Kategorie</h6>
+                            <div class="chart-container">
+                                <canvas id="inv-category-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-card">
+                            <h6>Wert nach Kategorie</h6>
+                            <div class="chart-container">
+                                <canvas id="inv-value-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4 mt-2">
+                    <div class="col-md-6">
+                        <div class="data-table">
+                            <h6><i class="bi bi-exclamation-triangle text-warning me-2"></i>Bestandswarnungen</h6>
+                            <table class="table table-sm" id="inv-alerts-table">
+                                <thead>
+                                    <tr>
+                                        <th>Artikel</th>
+                                        <th>Kategorie</th>
+                                        <th>Bestand</th>
+                                        <th>Min.</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="data-table">
+                            <h6>Top Artikel</h6>
+                            <table class="table table-sm" id="inv-top-table">
+                                <thead>
+                                    <tr>
+                                        <th>Artikel</th>
+                                        <th>Kategorie</th>
+                                        <th>Bestand</th>
+                                        <th>Wert</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ERP Devices -->
+            <div id="erp-devices" class="dashboard-section">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="dev-total">-</div>
+                            <div class="kpi-label">Geräte gesamt</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value text-success" id="dev-active">-</div>
+                            <div class="kpi-label">Aktiv</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="dev-assigned">-</div>
+                            <div class="kpi-label">Zugewiesen</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value text-primary" id="dev-available">-</div>
+                            <div class="kpi-label">Verfügbar</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value text-warning" id="dev-maintenance">-</div>
+                            <div class="kpi-label">In Wartung</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="dev-value">-</div>
+                            <div class="kpi-label">Gesamtwert</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="chart-card">
+                            <h6>Geräte nach Typ</h6>
+                            <div class="chart-container">
+                                <canvas id="dev-type-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-card">
+                            <h6>Geräte nach Status</h6>
+                            <div class="chart-container">
+                                <canvas id="dev-status-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ERP Medications -->
+            <div id="erp-medications" class="dashboard-section">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="med-total">-</div>
+                            <div class="kpi-label">Medikamente</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="med-active">-</div>
+                            <div class="kpi-label">Aktiv</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="med-prescription">-</div>
+                            <div class="kpi-label">Rezeptpflichtig</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value text-warning" id="med-low">-</div>
+                            <div class="kpi-label">Niedriger Bestand</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value text-danger" id="med-expiring">-</div>
+                            <div class="kpi-label">Bald ablaufend</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="med-value">-</div>
+                            <div class="kpi-label">Lagerwert</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="chart-card">
+                            <h6>Nach Darreichungsform</h6>
+                            <div class="chart-container">
+                                <canvas id="med-form-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-card">
+                            <h6>Nach Hersteller</h6>
+                            <div class="chart-container">
+                                <canvas id="med-manufacturer-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Billing Dashboard -->
+            <div id="billing-dashboard" class="dashboard-section">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-success bg-opacity-10 text-success">
+                                <i class="bi bi-receipt"></i>
+                            </div>
+                            <div class="kpi-value" id="bill-invoiced">-</div>
+                            <div class="kpi-label">Fakturiert</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-primary bg-opacity-10 text-primary">
+                                <i class="bi bi-check-circle"></i>
+                            </div>
+                            <div class="kpi-value" id="bill-paid">-</div>
+                            <div class="kpi-label">Bezahlt</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-warning bg-opacity-10 text-warning">
+                                <i class="bi bi-hourglass-split"></i>
+                            </div>
+                            <div class="kpi-value" id="bill-outstanding">-</div>
+                            <div class="kpi-label">Offen</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-danger bg-opacity-10 text-danger">
+                                <i class="bi bi-exclamation-circle"></i>
+                            </div>
+                            <div class="kpi-value" id="bill-overdue">-</div>
+                            <div class="kpi-label">Überfällig</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-8">
+                        <div class="chart-card">
+                            <h6>Umsatz & Zahlungen</h6>
+                            <div class="chart-container">
+                                <canvas id="bill-trend-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="chart-card">
+                            <h6>Rechnungsstatus</h6>
+                            <div class="chart-container">
+                                <canvas id="bill-status-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4 mt-2">
+                    <div class="col-md-6">
+                        <div class="chart-card">
+                            <h6>Aging Report</h6>
+                            <div class="chart-container">
+                                <canvas id="bill-aging-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="data-table">
+                            <h6>Überfällige Rechnungen</h6>
+                            <table class="table table-sm" id="bill-overdue-table">
+                                <thead>
+                                    <tr>
+                                        <th>Rechnung</th>
+                                        <th>Kunde</th>
+                                        <th>Betrag</th>
+                                        <th>Offen</th>
+                                        <th>Tage</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Finance Overview -->
+            <div id="finance-overview" class="dashboard-section">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-success bg-opacity-10 text-success">
+                                <i class="bi bi-currency-euro"></i>
+                            </div>
+                            <div class="kpi-value" id="fin-revenue">-</div>
+                            <div class="kpi-label">Umsatz</div>
+                            <div class="kpi-trend positive" id="fin-revenue-yoy">-</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-danger bg-opacity-10 text-danger">
+                                <i class="bi bi-graph-down-arrow"></i>
+                            </div>
+                            <div class="kpi-value" id="fin-costs">-</div>
+                            <div class="kpi-label">Kosten</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-primary bg-opacity-10 text-primary">
+                                <i class="bi bi-graph-up"></i>
+                            </div>
+                            <div class="kpi-value" id="fin-profit">-</div>
+                            <div class="kpi-label">Gewinn</div>
+                            <div class="kpi-trend positive" id="fin-profit-yoy">-</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bg-info bg-opacity-10 text-info">
+                                <i class="bi bi-percent"></i>
+                            </div>
+                            <div class="kpi-value" id="fin-margin">-</div>
+                            <div class="kpi-label">Marge</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-8">
+                        <div class="chart-card">
+                            <h6>Umsatz vs. Kosten</h6>
+                            <div class="chart-container">
+                                <canvas id="fin-trend-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="chart-card">
+                            <h6>Kostenverteilung</h6>
+                            <div class="chart-container">
+                                <canvas id="fin-costs-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4 mt-2">
+                    <div class="col-12">
+                        <div class="data-table">
+                            <h6>Kostenstellen</h6>
+                            <table class="table" id="fin-costcenter-table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Name</th>
+                                        <th>Abteilung</th>
+                                        <th>Budget</th>
+                                        <th>Ist</th>
+                                        <th>Abweichung</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Finance Receivables -->
+            <div id="finance-receivables" class="dashboard-section">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="rec-total">-</div>
+                            <div class="kpi-label">Forderungen gesamt</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-value text-success" id="rec-current">-</div>
+                            <div class="kpi-label">Aktuell</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-value text-danger" id="rec-overdue">-</div>
+                            <div class="kpi-label">Überfällig</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="kpi-card">
+                            <div class="kpi-value" id="rec-dso">-</div>
+                            <div class="kpi-label">DSO (Tage)</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="chart-card">
+                            <h6>Fälligkeitsanalyse</h6>
+                            <div class="chart-container">
+                                <canvas id="rec-aging-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="data-table">
+                            <h6>Top Schuldner</h6>
+                            <table class="table table-sm" id="rec-debtors-table">
+                                <thead>
+                                    <tr>
+                                        <th>Kunde</th>
+                                        <th>Offen</th>
+                                        <th>Überfällig</th>
+                                        <th>Rechnungen</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="business-reports.js"></script>
+</body>
+</html>

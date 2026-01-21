@@ -47,6 +47,28 @@ public class UMOApiDbContext : DbContext
     public DbSet<VatTax> VatTaxes { get; set; }
     public DbSet<User> Users { get; set; }
 
+    // Marketing & CRM entities
+    public DbSet<Campaign> Campaigns { get; set; }
+    public DbSet<Lead> Leads { get; set; }
+    public DbSet<LeadActivity> LeadActivities { get; set; }
+
+    // Sales entities
+    public DbSet<SalesOpportunity> SalesOpportunities { get; set; }
+    public DbSet<SalesOrder> SalesOrders { get; set; }
+    public DbSet<SalesOrderItem> SalesOrderItems { get; set; }
+
+    // ERP entities
+    public DbSet<Article> Articles { get; set; }
+    public DbSet<Inventory> Inventories { get; set; }
+    public DbSet<StockMovement> StockMovements { get; set; }
+    public DbSet<Medication> Medications { get; set; }
+
+    // Billing & Finance entities
+    public DbSet<Invoice> Invoices { get; set; }
+    public DbSet<InvoiceItem> InvoiceItems { get; set; }
+    public DbSet<Payment> Payments { get; set; }
+    public DbSet<CostCenter> CostCenters { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -603,6 +625,112 @@ public class UMOApiDbContext : DbContext
         modelBuilder.Entity<SystemEntry>().HasData(
             new SystemEntry { Id = 42, MandantId = 1, Type = "LANG", Description = "Türkisch", Code = "TR", SortOrder = 4, IsActive = true, CreateDate = DateTime.UtcNow },
             new SystemEntry { Id = 43, MandantId = 1, Type = "LANG", Description = "Russisch", Code = "RU", SortOrder = 5, IsActive = true, CreateDate = DateTime.UtcNow }
+        );
+
+        // Seed Marketing Campaigns
+        modelBuilder.Entity<Campaign>().HasData(
+            new Campaign { Id = 1, MandantId = 1, Name = "Frühjahrs-Pflegekampagne 2024", Type = "Email", Status = "Completed", Description = "E-Mail-Kampagne für Pflegedienste", StartDate = new DateTime(2024, 3, 1), EndDate = new DateTime(2024, 4, 30), Budget = 5000, ActualCost = 4200, TargetLeads = 100, ActualLeads = 87, ConvertedLeads = 23, TargetAudience = "Senioren 65+", Channel = "Email", CreateDate = DateTime.UtcNow },
+            new Campaign { Id = 2, MandantId = 1, Name = "Social Media Awareness", Type = "Social", Status = "Active", Description = "Facebook & Instagram Kampagne", StartDate = new DateTime(2024, 6, 1), EndDate = new DateTime(2024, 12, 31), Budget = 12000, ActualCost = 6500, TargetLeads = 200, ActualLeads = 134, ConvertedLeads = 31, TargetAudience = "Angehörige", Channel = "Social Media", CreateDate = DateTime.UtcNow },
+            new Campaign { Id = 3, MandantId = 1, Name = "Messe Altenpflege 2024", Type = "Event", Status = "Completed", Description = "Messestand auf der Altenpflege-Messe", StartDate = new DateTime(2024, 4, 23), EndDate = new DateTime(2024, 4, 25), Budget = 15000, ActualCost = 14200, TargetLeads = 50, ActualLeads = 67, ConvertedLeads = 18, TargetAudience = "Fachpublikum", Channel = "Event", CreateDate = DateTime.UtcNow },
+            new Campaign { Id = 4, MandantId = 1, Name = "Empfehlungsprogramm", Type = "Referral", Status = "Active", Description = "Kunden-werben-Kunden Programm", StartDate = new DateTime(2024, 1, 1), EndDate = new DateTime(2024, 12, 31), Budget = 8000, ActualCost = 3200, TargetLeads = 80, ActualLeads = 45, ConvertedLeads = 28, TargetAudience = "Bestandskunden", Channel = "Referral", CreateDate = DateTime.UtcNow },
+            new Campaign { Id = 5, MandantId = 1, Name = "Google Ads Herbst", Type = "Digital", Status = "Active", Description = "Google Ads für Pflegeberatung", StartDate = new DateTime(2024, 9, 1), EndDate = new DateTime(2024, 11, 30), Budget = 6000, ActualCost = 2100, TargetLeads = 120, ActualLeads = 56, ConvertedLeads = 12, TargetAudience = "Pflegebedürftige", Channel = "Google", CreateDate = DateTime.UtcNow }
+        );
+
+        // Seed Leads
+        modelBuilder.Entity<Lead>().HasData(
+            new Lead { Id = 1, MandantId = 1, FirstName = "Thomas", LastName = "Becker", Email = "t.becker@email.de", Phone = "+49 171 1234567", Company = null, Source = "Website", Status = "Qualified", QualificationScore = "Hot", Score = 85, EstimatedValue = 2400, FirstContactDate = new DateTime(2024, 7, 15), LastContactDate = new DateTime(2024, 8, 1), CampaignId = 2, AssignedToName = "Maria Schmidt", CreateDate = DateTime.UtcNow },
+            new Lead { Id = 2, MandantId = 1, FirstName = "Sabine", LastName = "Koch", Email = "s.koch@gmx.de", Phone = "+49 172 2345678", Company = "Pflegeheim Sonnenschein", Source = "Referral", Status = "Proposal", QualificationScore = "Hot", Score = 92, EstimatedValue = 8500, FirstContactDate = new DateTime(2024, 6, 20), LastContactDate = new DateTime(2024, 7, 28), CampaignId = 4, AssignedToName = "Peter Müller", CreateDate = DateTime.UtcNow },
+            new Lead { Id = 3, MandantId = 1, FirstName = "Michael", LastName = "Wagner", Email = "m.wagner@web.de", Phone = "+49 173 3456789", Company = null, Source = "Campaign", Status = "Contacted", QualificationScore = "Warm", Score = 65, EstimatedValue = 1800, FirstContactDate = new DateTime(2024, 8, 5), LastContactDate = new DateTime(2024, 8, 10), CampaignId = 1, AssignedToName = "Maria Schmidt", CreateDate = DateTime.UtcNow },
+            new Lead { Id = 4, MandantId = 1, FirstName = "Claudia", LastName = "Hoffmann", Email = "c.hoffmann@outlook.de", Phone = "+49 174 4567890", Company = null, Source = "Website", Status = "New", QualificationScore = "Cold", Score = 35, EstimatedValue = 1200, FirstContactDate = new DateTime(2024, 8, 12), LastContactDate = null, CampaignId = 5, AssignedToName = "Anna Weber", CreateDate = DateTime.UtcNow },
+            new Lead { Id = 5, MandantId = 1, FirstName = "Stefan", LastName = "Richter", Email = "s.richter@t-online.de", Phone = "+49 175 5678901", Company = "Seniorenresidenz Am Park", Source = "Event", Status = "Won", QualificationScore = "Hot", Score = 98, EstimatedValue = 12000, FirstContactDate = new DateTime(2024, 4, 23), LastContactDate = new DateTime(2024, 5, 15), ConvertedClientId = 5, ConversionDate = new DateTime(2024, 5, 20), CampaignId = 3, AssignedToName = "Peter Müller", CreateDate = DateTime.UtcNow },
+            new Lead { Id = 6, MandantId = 1, FirstName = "Petra", LastName = "Schulz", Email = "p.schulz@email.de", Phone = "+49 176 6789012", Company = null, Source = "Website", Status = "Negotiation", QualificationScore = "Hot", Score = 88, EstimatedValue = 3600, FirstContactDate = new DateTime(2024, 7, 1), LastContactDate = new DateTime(2024, 8, 8), CampaignId = 2, AssignedToName = "Maria Schmidt", CreateDate = DateTime.UtcNow },
+            new Lead { Id = 7, MandantId = 1, FirstName = "Andreas", LastName = "Klein", Email = "a.klein@gmail.com", Phone = "+49 177 7890123", Company = null, Source = "Referral", Status = "Lost", QualificationScore = "Warm", Score = 55, EstimatedValue = 2000, FirstContactDate = new DateTime(2024, 5, 10), LastContactDate = new DateTime(2024, 6, 15), CampaignId = 4, AssignedToName = "Anna Weber", CreateDate = DateTime.UtcNow },
+            new Lead { Id = 8, MandantId = 1, FirstName = "Monika", LastName = "Wolf", Email = "m.wolf@yahoo.de", Phone = "+49 178 8901234", Company = "Ambulanter Pflegedienst Herz", Source = "Cold Call", Status = "Qualified", QualificationScore = "Warm", Score = 72, EstimatedValue = 5500, FirstContactDate = new DateTime(2024, 7, 20), LastContactDate = new DateTime(2024, 8, 5), CampaignId = null, AssignedToName = "Peter Müller", CreateDate = DateTime.UtcNow }
+        );
+
+        // Seed Lead Activities
+        modelBuilder.Entity<LeadActivity>().HasData(
+            new LeadActivity { Id = 1, LeadId = 1, MandantId = 1, Type = "Call", Description = "Erstgespräch - Interesse an Pflegebett", ActivityDate = new DateTime(2024, 7, 16), Outcome = "Positive", Duration = 25, PerformedBy = "Maria Schmidt" },
+            new LeadActivity { Id = 2, LeadId = 1, MandantId = 1, Type = "Email", Description = "Produktinformationen gesendet", ActivityDate = new DateTime(2024, 7, 18), Outcome = "Neutral", Duration = 10, PerformedBy = "Maria Schmidt" },
+            new LeadActivity { Id = 3, LeadId = 2, MandantId = 1, Type = "Meeting", Description = "Vor-Ort-Termin im Pflegeheim", ActivityDate = new DateTime(2024, 7, 5), Outcome = "Positive", Duration = 90, PerformedBy = "Peter Müller" },
+            new LeadActivity { Id = 4, LeadId = 2, MandantId = 1, Type = "Proposal", Description = "Angebot für 10 Pflegebetten erstellt", ActivityDate = new DateTime(2024, 7, 15), Outcome = "Positive", Duration = 60, PerformedBy = "Peter Müller" },
+            new LeadActivity { Id = 5, LeadId = 5, MandantId = 1, Type = "Demo", Description = "Produktvorführung auf der Messe", ActivityDate = new DateTime(2024, 4, 24), Outcome = "Positive", Duration = 45, PerformedBy = "Peter Müller" },
+            new LeadActivity { Id = 6, LeadId = 6, MandantId = 1, Type = "Call", Description = "Nachfassgespräch - Preisverhandlung", ActivityDate = new DateTime(2024, 8, 8), Outcome = "Positive", Duration = 30, PerformedBy = "Maria Schmidt" }
+        );
+
+        // Seed Sales Opportunities
+        modelBuilder.Entity<SalesOpportunity>().HasData(
+            new SalesOpportunity { Id = 1, MandantId = 1, Name = "Pflegeheim Sonnenschein - Betten", LeadId = 2, Stage = "Proposal", Amount = 8500, Probability = 75, ExpectedCloseDate = new DateTime(2024, 9, 15), ProductInterest = "Pflegebetten", AssignedToName = "Peter Müller", CreateDate = DateTime.UtcNow },
+            new SalesOpportunity { Id = 2, MandantId = 1, Name = "Becker - Pflegebett", LeadId = 1, Stage = "Negotiation", Amount = 2400, Probability = 80, ExpectedCloseDate = new DateTime(2024, 8, 30), ProductInterest = "Pflegebett Einzeln", AssignedToName = "Maria Schmidt", CreateDate = DateTime.UtcNow },
+            new SalesOpportunity { Id = 3, MandantId = 1, Name = "Schulz - Komplett-Ausstattung", LeadId = 6, Stage = "Negotiation", Amount = 3600, Probability = 70, ExpectedCloseDate = new DateTime(2024, 9, 1), ProductInterest = "Pflegebett + Rollator", AssignedToName = "Maria Schmidt", CreateDate = DateTime.UtcNow },
+            new SalesOpportunity { Id = 4, MandantId = 1, Name = "Ambulanter Dienst Herz - Geräte", LeadId = 8, Stage = "Qualification", Amount = 5500, Probability = 40, ExpectedCloseDate = new DateTime(2024, 10, 15), ProductInterest = "Diverse Geräte", AssignedToName = "Peter Müller", CreateDate = DateTime.UtcNow },
+            new SalesOpportunity { Id = 5, MandantId = 1, Name = "Seniorenresidenz - Abschluss", LeadId = 5, Stage = "Closed Won", Amount = 12000, Probability = 100, ExpectedCloseDate = new DateTime(2024, 5, 20), ActualCloseDate = new DateTime(2024, 5, 20), ProductInterest = "Großauftrag", AssignedToName = "Peter Müller", CreateDate = DateTime.UtcNow }
+        );
+
+        // Seed Articles
+        modelBuilder.Entity<Article>().HasData(
+            new Article { Id = 1, MandantId = 1, ArticleNumber = "PB-001", Name = "Pflegebett Standard", Description = "Elektrisch verstellbares Pflegebett", Category = "Device", SubCategory = "Betten", Unit = "Stück", PurchasePrice = 800, SalesPrice = 1200, VatRate = 19, MinStock = 5, MaxStock = 20, ReorderPoint = 8, Supplier = "Stiegelmeyer", IsActive = true, CreateDate = DateTime.UtcNow },
+            new Article { Id = 2, MandantId = 1, ArticleNumber = "PB-002", Name = "Pflegebett Premium", Description = "Premium Pflegebett mit Seitengitter", Category = "Device", SubCategory = "Betten", Unit = "Stück", PurchasePrice = 1200, SalesPrice = 1800, VatRate = 19, MinStock = 3, MaxStock = 15, ReorderPoint = 5, Supplier = "Stiegelmeyer", IsActive = true, CreateDate = DateTime.UtcNow },
+            new Article { Id = 3, MandantId = 1, ArticleNumber = "RO-001", Name = "Rollator Standard", Description = "Leichtgewicht-Rollator", Category = "Device", SubCategory = "Mobilität", Unit = "Stück", PurchasePrice = 80, SalesPrice = 150, VatRate = 19, MinStock = 10, MaxStock = 50, ReorderPoint = 15, Supplier = "Russka", IsActive = true, CreateDate = DateTime.UtcNow },
+            new Article { Id = 4, MandantId = 1, ArticleNumber = "RS-001", Name = "Rollstuhl Standard", Description = "Faltbarer Rollstuhl", Category = "Device", SubCategory = "Mobilität", Unit = "Stück", PurchasePrice = 200, SalesPrice = 350, VatRate = 19, MinStock = 5, MaxStock = 25, ReorderPoint = 8, Supplier = "Bischoff & Bischoff", IsActive = true, CreateDate = DateTime.UtcNow },
+            new Article { Id = 5, MandantId = 1, ArticleNumber = "NA-001", Name = "Notrufarmband", Description = "GPS-Notrufarmband mit Sturzerkennung", Category = "Device", SubCategory = "Sicherheit", Unit = "Stück", PurchasePrice = 150, SalesPrice = 280, VatRate = 19, MinStock = 20, MaxStock = 100, ReorderPoint = 30, Supplier = "Tunstall", IsActive = true, CreateDate = DateTime.UtcNow },
+            new Article { Id = 6, MandantId = 1, ArticleNumber = "MED-001", Name = "Ibuprofen 400mg", Description = "Schmerzmittel 50 Tabletten", Category = "Medication", SubCategory = "Schmerzmittel", Unit = "Packung", PurchasePrice = 3.50m, SalesPrice = 6.99m, VatRate = 19, MinStock = 50, MaxStock = 200, ReorderPoint = 80, Supplier = "Ratiopharm", RequiresPrescription = false, IsActive = true, CreateDate = DateTime.UtcNow },
+            new Article { Id = 7, MandantId = 1, ArticleNumber = "MED-002", Name = "Metformin 500mg", Description = "Diabetes-Medikament 100 Tabletten", Category = "Medication", SubCategory = "Diabetes", Unit = "Packung", PurchasePrice = 8.00m, SalesPrice = 15.99m, VatRate = 19, MinStock = 30, MaxStock = 100, ReorderPoint = 50, Supplier = "Hexal", RequiresPrescription = true, IsActive = true, CreateDate = DateTime.UtcNow },
+            new Article { Id = 8, MandantId = 1, ArticleNumber = "SUP-001", Name = "Einmalhandschuhe L", Description = "Nitril-Handschuhe Größe L, 100 Stück", Category = "Supply", SubCategory = "Hygiene", Unit = "Box", PurchasePrice = 8.00m, SalesPrice = 14.99m, VatRate = 19, MinStock = 100, MaxStock = 500, ReorderPoint = 150, Supplier = "Hartmann", IsActive = true, CreateDate = DateTime.UtcNow },
+            new Article { Id = 9, MandantId = 1, ArticleNumber = "SUP-002", Name = "Desinfektionsmittel 1L", Description = "Händedesinfektionsmittel", Category = "Supply", SubCategory = "Hygiene", Unit = "Flasche", PurchasePrice = 5.00m, SalesPrice = 9.99m, VatRate = 19, MinStock = 50, MaxStock = 200, ReorderPoint = 80, Supplier = "Schülke", IsActive = true, CreateDate = DateTime.UtcNow },
+            new Article { Id = 10, MandantId = 1, ArticleNumber = "SRV-001", Name = "Pflegeberatung Stunde", Description = "Professionelle Pflegeberatung", Category = "Service", SubCategory = "Beratung", Unit = "Stunde", PurchasePrice = 0, SalesPrice = 85, VatRate = 19, MinStock = 0, MaxStock = 0, ReorderPoint = 0, Supplier = null, IsActive = true, CreateDate = DateTime.UtcNow }
+        );
+
+        // Seed Inventory
+        modelBuilder.Entity<Inventory>().HasData(
+            new Inventory { Id = 1, MandantId = 1, ArticleId = 1, WarehouseLocation = "Lager A-01", CurrentStock = 12, ReservedStock = 2, AvailableStock = 10, LastStockTake = new DateTime(2024, 7, 1), LastMovementDate = new DateTime(2024, 8, 5) },
+            new Inventory { Id = 2, MandantId = 1, ArticleId = 2, WarehouseLocation = "Lager A-02", CurrentStock = 8, ReservedStock = 1, AvailableStock = 7, LastStockTake = new DateTime(2024, 7, 1), LastMovementDate = new DateTime(2024, 8, 3) },
+            new Inventory { Id = 3, MandantId = 1, ArticleId = 3, WarehouseLocation = "Lager B-01", CurrentStock = 35, ReservedStock = 5, AvailableStock = 30, LastStockTake = new DateTime(2024, 7, 1), LastMovementDate = new DateTime(2024, 8, 10) },
+            new Inventory { Id = 4, MandantId = 1, ArticleId = 4, WarehouseLocation = "Lager B-02", CurrentStock = 18, ReservedStock = 3, AvailableStock = 15, LastStockTake = new DateTime(2024, 7, 1), LastMovementDate = new DateTime(2024, 8, 8) },
+            new Inventory { Id = 5, MandantId = 1, ArticleId = 5, WarehouseLocation = "Lager C-01", CurrentStock = 45, ReservedStock = 10, AvailableStock = 35, LastStockTake = new DateTime(2024, 7, 1), LastMovementDate = new DateTime(2024, 8, 12) },
+            new Inventory { Id = 6, MandantId = 1, ArticleId = 6, WarehouseLocation = "Lager D-01", CurrentStock = 120, ReservedStock = 0, AvailableStock = 120, BatchNumber = "LOT-2024-001", ExpiryDate = new DateTime(2026, 3, 15), LastStockTake = new DateTime(2024, 7, 1), LastMovementDate = new DateTime(2024, 8, 1) },
+            new Inventory { Id = 7, MandantId = 1, ArticleId = 7, WarehouseLocation = "Lager D-02", CurrentStock = 65, ReservedStock = 0, AvailableStock = 65, BatchNumber = "LOT-2024-002", ExpiryDate = new DateTime(2025, 12, 31), LastStockTake = new DateTime(2024, 7, 1), LastMovementDate = new DateTime(2024, 7, 25) },
+            new Inventory { Id = 8, MandantId = 1, ArticleId = 8, WarehouseLocation = "Lager E-01", CurrentStock = 250, ReservedStock = 20, AvailableStock = 230, LastStockTake = new DateTime(2024, 7, 1), LastMovementDate = new DateTime(2024, 8, 11) },
+            new Inventory { Id = 9, MandantId = 1, ArticleId = 9, WarehouseLocation = "Lager E-02", CurrentStock = 95, ReservedStock = 5, AvailableStock = 90, LastStockTake = new DateTime(2024, 7, 1), LastMovementDate = new DateTime(2024, 8, 9) }
+        );
+
+        // Seed Invoices
+        modelBuilder.Entity<Invoice>().HasData(
+            new Invoice { Id = 1, MandantId = 1, InvoiceNumber = "INV-2024-001", ClientId = 1, Status = "Paid", InvoiceDate = new DateTime(2024, 1, 15), DueDate = new DateTime(2024, 2, 15), PaidDate = new DateTime(2024, 2, 10), SubTotal = 1200, Tax = 228, TotalAmount = 1428, PaidAmount = 1428, OutstandingAmount = 0, PaymentMethod = "Bank Transfer", CreateDate = DateTime.UtcNow },
+            new Invoice { Id = 2, MandantId = 1, InvoiceNumber = "INV-2024-002", ClientId = 2, Status = "Paid", InvoiceDate = new DateTime(2024, 2, 1), DueDate = new DateTime(2024, 3, 1), PaidDate = new DateTime(2024, 2, 28), SubTotal = 2400, Tax = 456, TotalAmount = 2856, PaidAmount = 2856, OutstandingAmount = 0, PaymentMethod = "Direct Debit", CreateDate = DateTime.UtcNow },
+            new Invoice { Id = 3, MandantId = 1, InvoiceNumber = "INV-2024-003", ClientId = 3, Status = "Overdue", InvoiceDate = new DateTime(2024, 5, 15), DueDate = new DateTime(2024, 6, 15), SubTotal = 850, Tax = 161.50m, TotalAmount = 1011.50m, PaidAmount = 0, OutstandingAmount = 1011.50m, ReminderCount = 2, LastReminderDate = new DateTime(2024, 7, 15), CreateDate = DateTime.UtcNow },
+            new Invoice { Id = 4, MandantId = 1, InvoiceNumber = "INV-2024-004", ClientId = 4, Status = "Sent", InvoiceDate = new DateTime(2024, 7, 1), DueDate = new DateTime(2024, 8, 1), SubTotal = 1800, Tax = 342, TotalAmount = 2142, PaidAmount = 0, OutstandingAmount = 2142, CreateDate = DateTime.UtcNow },
+            new Invoice { Id = 5, MandantId = 1, InvoiceNumber = "INV-2024-005", ClientId = 5, Status = "Paid", InvoiceDate = new DateTime(2024, 6, 1), DueDate = new DateTime(2024, 7, 1), PaidDate = new DateTime(2024, 6, 25), SubTotal = 3500, Tax = 665, TotalAmount = 4165, PaidAmount = 4165, OutstandingAmount = 0, PaymentMethod = "Bank Transfer", CreateDate = DateTime.UtcNow },
+            new Invoice { Id = 6, MandantId = 1, InvoiceNumber = "INV-2024-006", ClientId = 6, Status = "Paid", InvoiceDate = new DateTime(2024, 7, 15), DueDate = new DateTime(2024, 8, 15), PaidDate = new DateTime(2024, 8, 1), SubTotal = 950, Tax = 180.50m, TotalAmount = 1130.50m, PaidAmount = 1130.50m, OutstandingAmount = 0, PaymentMethod = "Credit Card", CreateDate = DateTime.UtcNow },
+            new Invoice { Id = 7, MandantId = 1, InvoiceNumber = "INV-2024-007", ClientId = 7, Status = "Overdue", InvoiceDate = new DateTime(2024, 4, 1), DueDate = new DateTime(2024, 5, 1), SubTotal = 1500, Tax = 285, TotalAmount = 1785, PaidAmount = 500, OutstandingAmount = 1285, ReminderCount = 3, LastReminderDate = new DateTime(2024, 8, 1), CreateDate = DateTime.UtcNow },
+            new Invoice { Id = 8, MandantId = 1, InvoiceNumber = "INV-2024-008", ClientId = 8, Status = "Draft", InvoiceDate = new DateTime(2024, 8, 10), DueDate = new DateTime(2024, 9, 10), SubTotal = 2200, Tax = 418, TotalAmount = 2618, PaidAmount = 0, OutstandingAmount = 2618, CreateDate = DateTime.UtcNow }
+        );
+
+        // Seed Payments
+        modelBuilder.Entity<Payment>().HasData(
+            new Payment { Id = 1, MandantId = 1, InvoiceId = 1, ClientId = 1, PaymentNumber = "PAY-2024-001", Amount = 1428, PaymentDate = new DateTime(2024, 2, 10), PaymentMethod = "Bank Transfer", Reference = "Überweisung", Status = "Completed", CreateDate = DateTime.UtcNow },
+            new Payment { Id = 2, MandantId = 1, InvoiceId = 2, ClientId = 2, PaymentNumber = "PAY-2024-002", Amount = 2856, PaymentDate = new DateTime(2024, 2, 28), PaymentMethod = "Direct Debit", Reference = "Lastschrift", Status = "Completed", CreateDate = DateTime.UtcNow },
+            new Payment { Id = 3, MandantId = 1, InvoiceId = 5, ClientId = 5, PaymentNumber = "PAY-2024-003", Amount = 4165, PaymentDate = new DateTime(2024, 6, 25), PaymentMethod = "Bank Transfer", Reference = "Überweisung", Status = "Completed", CreateDate = DateTime.UtcNow },
+            new Payment { Id = 4, MandantId = 1, InvoiceId = 6, ClientId = 6, PaymentNumber = "PAY-2024-004", Amount = 1130.50m, PaymentDate = new DateTime(2024, 8, 1), PaymentMethod = "Credit Card", Reference = "Kreditkarte", Status = "Completed", CreateDate = DateTime.UtcNow },
+            new Payment { Id = 5, MandantId = 1, InvoiceId = 7, ClientId = 7, PaymentNumber = "PAY-2024-005", Amount = 500, PaymentDate = new DateTime(2024, 5, 15), PaymentMethod = "Bank Transfer", Reference = "Teilzahlung", Status = "Completed", CreateDate = DateTime.UtcNow }
+        );
+
+        // Seed Cost Centers
+        modelBuilder.Entity<CostCenter>().HasData(
+            new CostCenter { Id = 1, MandantId = 1, Code = "CC-100", Name = "Vertrieb", Description = "Vertriebsabteilung", Department = "Sales", Budget = 50000, ActualSpend = 32000, IsActive = true },
+            new CostCenter { Id = 2, MandantId = 1, Code = "CC-200", Name = "Marketing", Description = "Marketingabteilung", Department = "Marketing", Budget = 40000, ActualSpend = 28500, IsActive = true },
+            new CostCenter { Id = 3, MandantId = 1, Code = "CC-300", Name = "Lager & Logistik", Description = "Lagerverwaltung", Department = "Operations", Budget = 25000, ActualSpend = 18000, IsActive = true },
+            new CostCenter { Id = 4, MandantId = 1, Code = "CC-400", Name = "Verwaltung", Description = "Allgemeine Verwaltung", Department = "Admin", Budget = 35000, ActualSpend = 29000, IsActive = true },
+            new CostCenter { Id = 5, MandantId = 1, Code = "CC-500", Name = "IT", Description = "IT-Abteilung", Department = "IT", Budget = 30000, ActualSpend = 22000, IsActive = true }
+        );
+
+        // Seed Medications
+        modelBuilder.Entity<Medication>().HasData(
+            new Medication { Id = 1, MandantId = 1, Name = "Ibuprofen 400mg", GenericName = "Ibuprofen", Manufacturer = "Ratiopharm", DosageForm = "Tablet", Strength = "400mg", PackageSize = "50 Stück", Price = 6.99m, RequiresPrescription = false, StorageConditions = "Raumtemperatur", ArticleId = 6, IsActive = true },
+            new Medication { Id = 2, MandantId = 1, Name = "Metformin 500mg", GenericName = "Metformin", Manufacturer = "Hexal", DosageForm = "Tablet", Strength = "500mg", PackageSize = "100 Stück", Price = 15.99m, RequiresPrescription = true, StorageConditions = "Raumtemperatur", ArticleId = 7, IsActive = true },
+            new Medication { Id = 3, MandantId = 1, Name = "Omeprazol 20mg", GenericName = "Omeprazol", Manufacturer = "Stada", DosageForm = "Capsule", Strength = "20mg", PackageSize = "30 Stück", Price = 12.50m, RequiresPrescription = true, StorageConditions = "Raumtemperatur", IsActive = true },
+            new Medication { Id = 4, MandantId = 1, Name = "Ramipril 5mg", GenericName = "Ramipril", Manufacturer = "1A Pharma", DosageForm = "Tablet", Strength = "5mg", PackageSize = "100 Stück", Price = 18.99m, RequiresPrescription = true, StorageConditions = "Raumtemperatur", IsActive = true },
+            new Medication { Id = 5, MandantId = 1, Name = "Insulin Lantus", GenericName = "Insulin glargin", Manufacturer = "Sanofi", DosageForm = "Injection", Strength = "100 E/ml", PackageSize = "5 Pens", Price = 89.99m, RequiresPrescription = true, StorageConditions = "Kühlschrank 2-8°C", IsActive = true }
         );
     }
 }

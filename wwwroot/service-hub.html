@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Hub - Notruf-Leitstelle</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SIP.js for WebRTC telephony -->
+    <script src="https://cdn.jsdelivr.net/npm/sip.js@0.21.2/lib/platform/web/index.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #dc3545;
+            --secondary-color: #28a745;
+            --warning-color: #ffc107;
+            --dark-bg: #1a1a2e;
+            --sidebar-bg: #16213e;
+            --card-bg: #0f3460;
+        }
+        
+        body {
+            background-color: var(--dark-bg);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            background: var(--sidebar-bg);
+            min-height: 100vh;
+            padding: 0;
+            position: fixed;
+            width: 280px;
+            z-index: 1000;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            text-align: center;
+        }
+        
+        .sidebar-header h4 {
+            margin: 0;
+            font-weight: 700;
+        }
+        
+        .sidebar-header small {
+            opacity: 0.8;
+        }
+        
+        .nav-section {
+            padding: 15px 20px 5px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: #6c757d;
+            letter-spacing: 1px;
+        }
+        
+        .sidebar .nav-link {
+            color: #adb5bd;
+            padding: 12px 20px;
+            border-left: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background: rgba(220, 53, 69, 0.2);
+            color: #fff;
+            border-left-color: var(--primary-color);
+        }
+        
+        .sidebar .nav-link i {
+            margin-right: 10px;
+            width: 20px;
+        }
+        
+        .main-content {
+            margin-left: 280px;
+            padding: 20px;
+        }
+        
+        /* Softphone Panel */
+        .softphone-panel {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            width: 320px;
+            background: var(--card-bg);
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            z-index: 1001;
+            overflow: hidden;
+        }
+        
+        .softphone-header {
+            background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .softphone-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator.offline { background: #dc3545; animation: none; }
+        .status-indicator.oncall { background: #ffc107; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .softphone-body {
+            padding: 20px;
+        }
+        
+        .dial-display {
+            background: #0a0a1a;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+            font-family: monospace;
+            min-height: 50px;
+        }
+        
+        .dial-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .dial-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            color: #fff;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 0 auto;
+        }
+        
+        .dial-btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.1);
+        }
+        
+        .call-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .call-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .call-btn.answer { background: #28a745; color: white; }
+        .call-btn.hangup { background: #dc3545; color: white; }
+        .call-btn.hold { background: #ffc107; color: black; }
+        .call-btn.mute { background: #6c757d; color: white; }
+        
+        .call-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        /* Alert Cards */
+        .alert-card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid;
+            transition: all 0.3s;
+        }
+        
+        .alert-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        .alert-card.critical { border-left-color: #dc3545; }
+        .alert-card.high { border-left-color: #fd7e14; }
+        .alert-card.medium { border-left-color: #ffc107; }
+        .alert-card.low { border-left-color: #28a745; }
+        
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .alert-type {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .alert-type i {
+            font-size: 1.2rem;
+        }
+        
+        .alert-badge {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .badge-critical { background: #dc3545; }
+        .badge-high { background: #fd7e14; }
+        .badge-new { background: #007bff; }
+        .badge-inprogress { background: #ffc107; color: #000; }
+        
+        .alert-client {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .alert-info {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            color: #adb5bd;
+        }
+        
+        .alert-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        /* Stats Cards */
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        .stat-label {
+            color: #adb5bd;
+            font-size: 0.9rem;
+        }
+        
+        .stat-card.danger .stat-value { color: #dc3545; }
+        .stat-card.warning .stat-value { color: #ffc107; }
+        .stat-card.success .stat-value { color: #28a745; }
+        .stat-card.info .stat-value { color: #17a2b8; }
+        
+        /* Dispatcher Status */
+        .dispatcher-card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .dispatcher-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .dispatcher-info {
+            flex: 1;
+        }
+        
+        .dispatcher-name {
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        
+        .dispatcher-status {
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .status-dot.online { background: #28a745; }
+        .status-dot.oncall { background: #ffc107; }
+        .status-dot.break { background: #fd7e14; }
+        .status-dot.offline { background: #6c757d; }
+        
+        /* Call Log Table */
+        .call-log-table {
+            background: var(--card-bg);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .call-log-table th {
+            background: rgba(0,0,0,0.3);
+            padding: 12px 15px;
+            font-weight: 600;
+            border: none;
+        }
+        
+        .call-log-table td {
+            padding: 12px 15px;
+            border-color: rgba(255,255,255,0.1);
+            vertical-align: middle;
+        }
+        
+        .direction-badge {
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 0.75rem;
+        }
+        
+        .direction-badge.inbound { background: #28a745; }
+        .direction-badge.outbound { background: #007bff; }
+        
+        /* Device Status */
+        .device-card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .device-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .device-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        
+        .device-icon.applewatch { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%); }
+        .device-icon.hausnotruf { background: linear-gradient(135deg, #4ecdc4 0%, #44a3a0 100%); }
+        .device-icon.mobilnotruf { background: linear-gradient(135deg, #a8e6cf 0%, #88d8b0 100%); }
+        
+        .battery-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.85rem;
+        }
+        
+        .battery-bar {
+            width: 30px;
+            height: 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .battery-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+        
+        .battery-fill.high { background: #28a745; }
+        .battery-fill.medium { background: #ffc107; }
+        .battery-fill.low { background: #dc3545; }
+        
+        /* Incoming Call Modal */
+        .incoming-call-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        
+        .incoming-call-modal.show {
+            display: flex;
+        }
+        
+        .incoming-call-content {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            animation: pulse-border 1s infinite;
+        }
+        
+        @keyframes pulse-border {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+            50% { box-shadow: 0 0 0 20px rgba(220, 53, 69, 0); }
+        }
+        
+        .incoming-caller-icon {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            margin: 0 auto 20px;
+            animation: ring 1s infinite;
+        }
+        
+        @keyframes ring {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(15deg); }
+            75% { transform: rotate(-15deg); }
+        }
+        
+        /* Map Container */
+        .map-container {
+            background: var(--card-bg);
+            border-radius: 10px;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+        }
+        
+        /* Responsive */
+        @media (max-width: 992px) {
+            .sidebar {
+                width: 100%;
+                position: relative;
+                min-height: auto;
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .softphone-panel {
+                width: 100%;
+                right: 0;
+                bottom: 0;
+                border-radius: 15px 15px 0 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h4><i class="bi bi-telephone-fill"></i> Service Hub</h4>
+            <small>Notruf-Leitstelle</small>
+        </div>
+        
+        <div class="nav-section">Übersicht</div>
+        <nav class="nav flex-column">
+            <a class="nav-link active" href="#" data-section="dashboard">
+                <i class="bi bi-speedometer2"></i> Dashboard
+            </a>
+            <a class="nav-link" href="#" data-section="alerts">
+                <i class="bi bi-exclamation-triangle"></i> Aktive Alarme
+                <span class="badge bg-danger ms-auto" id="alertCount">0</span>
+            </a>
+        </nav>
+        
+        <div class="nav-section">Telefonie</div>
+        <nav class="nav flex-column">
+            <a class="nav-link" href="#" data-section="calls">
+                <i class="bi bi-telephone"></i> Anrufe
+            </a>
+            <a class="nav-link" href="#" data-section="callhistory">
+                <i class="bi bi-clock-history"></i> Anrufprotokoll
+            </a>
+        </nav>
+        
+        <div class="nav-section">Verwaltung</div>
+        <nav class="nav flex-column">
+            <a class="nav-link" href="#" data-section="devices">
+                <i class="bi bi-smartwatch"></i> Notrufgeräte
+            </a>
+            <a class="nav-link" href="#" data-section="contacts">
+                <i class="bi bi-people"></i> Notfallkontakte
+            </a>
+            <a class="nav-link" href="#" data-section="dispatchers">
+                <i class="bi bi-headset"></i> Disponenten
+            </a>
+        </nav>
+        
+        <div class="nav-section">Auswertung</div>
+        <nav class="nav flex-column">
+            <a class="nav-link" href="#" data-section="statistics">
+                <i class="bi bi-graph-up"></i> Statistiken
+            </a>
+        </nav>
+        
+        <div class="nav-section mt-4">Navigation</div>
+        <nav class="nav flex-column">
+            <a class="nav-link" href="index.html">
+                <i class="bi bi-house"></i> Hauptanwendung
+            </a>
+            <a class="nav-link" href="business-reports.html">
+                <i class="bi bi-bar-chart"></i> Business Reports
+            </a>
+            <a class="nav-link" href="swagger" target="_blank">
+                <i class="bi bi-code-slash"></i> API Dokumentation
+            </a>
+        </nav>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Dashboard Section -->
+        <div id="dashboard-section" class="content-section">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-speedometer2"></i> Leitstellen-Dashboard</h2>
+                <div class="d-flex gap-2">
+                    <span class="badge bg-success"><i class="bi bi-circle-fill"></i> System Online</span>
+                    <span id="currentTime" class="badge bg-secondary"></span>
+                </div>
+            </div>
+            
+            <!-- Stats Row -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card danger">
+                        <div class="stat-value" id="activeAlertsCount">0</div>
+                        <div class="stat-label">Aktive Alarme</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card warning">
+                        <div class="stat-value" id="activeCallsCount">0</div>
+                        <div class="stat-label">Aktive Anrufe</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card success">
+                        <div class="stat-value" id="onlineDispatchersCount">0</div>
+                        <div class="stat-label">Disponenten Online</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card info">
+                        <div class="stat-value" id="onlineDevicesCount">0</div>
+                        <div class="stat-label">Geräte Online</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row g-4">
+                <!-- Active Alerts -->
+                <div class="col-lg-8">
+                    <div class="card bg-transparent border-0">
+                        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-exclamation-triangle text-danger"></i> Aktuelle Alarme</h5>
+                            <button class="btn btn-sm btn-outline-light" onclick="loadDashboard()">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                        </div>
+                        <div class="card-body p-0" id="recentAlerts">
+                            <!-- Alerts will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Dispatcher Status -->
+                <div class="col-lg-4">
+                    <div class="card bg-transparent border-0">
+                        <div class="card-header bg-transparent border-0">
+                            <h5 class="mb-0"><i class="bi bi-headset text-success"></i> Disponenten</h5>
+                        </div>
+                        <div class="card-body p-0" id="dispatcherList">
+                            <!-- Dispatchers will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Alerts Section -->
+        <div id="alerts-section" class="content-section" style="display: none;">
+            <h2><i class="bi bi-exclamation-triangle"></i> Aktive Alarme</h2>
+            <div class="row mt-4">
+                <div class="col-12" id="allAlerts">
+                    <!-- All alerts will be loaded here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Calls Section -->
+        <div id="calls-section" class="content-section" style="display: none;">
+            <h2><i class="bi bi-telephone"></i> Aktive Anrufe</h2>
+            <div class="row mt-4">
+                <div class="col-12" id="activeCalls">
+                    <!-- Active calls will be loaded here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Call History Section -->
+        <div id="callhistory-section" class="content-section" style="display: none;">
+            <h2><i class="bi bi-clock-history"></i> Anrufprotokoll</h2>
+            <div class="table-responsive mt-4">
+                <table class="table table-dark call-log-table">
+                    <thead>
+                        <tr>
+                            <th>Zeit</th>
+                            <th>Richtung</th>
+                            <th>Rufnummer</th>
+                            <th>Klient</th>
+                            <th>Disponent</th>
+                            <th>Dauer</th>
+                            <th>Typ</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="callHistoryTable">
+                        <!-- Call history will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Devices Section -->
+        <div id="devices-section" class="content-section" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-smartwatch"></i> Notrufgeräte</h2>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDeviceModal">
+                    <i class="bi bi-plus-lg"></i> Gerät hinzufügen
+                </button>
+            </div>
+            <div class="row" id="devicesList">
+                <!-- Devices will be loaded here -->
+            </div>
+        </div>
+        
+        <!-- Contacts Section -->
+        <div id="contacts-section" class="content-section" style="display: none;">
+            <h2><i class="bi bi-people"></i> Notfallkontakte</h2>
+            <p class="text-muted">Wählen Sie einen Klienten aus, um dessen Notfallkontakte anzuzeigen.</p>
+        </div>
+        
+        <!-- Dispatchers Section -->
+        <div id="dispatchers-section" class="content-section" style="display: none;">
+            <h2><i class="bi bi-headset"></i> Disponenten</h2>
+            <div class="row mt-4" id="dispatchersGrid">
+                <!-- Dispatchers will be loaded here -->
+            </div>
+        </div>
+        
+        <!-- Statistics Section -->
+        <div id="statistics-section" class="content-section" style="display: none;">
+            <h2><i class="bi bi-graph-up"></i> Statistiken</h2>
+            <div class="row g-4 mt-2">
+                <div class="col-md-6">
+                    <div class="stat-card">
+                        <canvas id="alertsChart"></canvas>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="stat-card">
+                        <canvas id="callsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Softphone Panel -->
+    <div class="softphone-panel" id="softphonePanel">
+        <div class="softphone-header">
+            <div class="softphone-status">
+                <div class="status-indicator" id="phoneStatus"></div>
+                <span id="phoneStatusText">Bereit</span>
+            </div>
+        </div>
+        <div class="softphone-body">
+            <div class="dial-display" id="dialDisplay"></div>
+            
+            <div class="dial-pad">
+                <button class="dial-btn" onclick="dialDigit('1')">1</button>
+                <button class="dial-btn" onclick="dialDigit('2')">2</button>
+                <button class="dial-btn" onclick="dialDigit('3')">3</button>
+                <button class="dial-btn" onclick="dialDigit('4')">4</button>
+                <button class="dial-btn" onclick="dialDigit('5')">5</button>
+                <button class="dial-btn" onclick="dialDigit('6')">6</button>
+                <button class="dial-btn" onclick="dialDigit('7')">7</button>
+                <button class="dial-btn" onclick="dialDigit('8')">8</button>
+                <button class="dial-btn" onclick="dialDigit('9')">9</button>
+                <button class="dial-btn" onclick="dialDigit('*')">*</button>
+                <button class="dial-btn" onclick="dialDigit('0')">0</button>
+                <button class="dial-btn" onclick="dialDigit('#')">#</button>
+            </div>
+            
+            <div class="call-actions">
+                <button class="call-btn mute" onclick="toggleMute()" id="muteBtn" title="Stummschalten">
+                    <i class="bi bi-mic"></i>
+                </button>
+                <button class="call-btn answer" onclick="makeCall()" id="callBtn" title="Anrufen">
+                    <i class="bi bi-telephone"></i>
+                </button>
+                <button class="call-btn hangup" onclick="hangupCall()" id="hangupBtn" title="Auflegen" style="display: none;">
+                    <i class="bi bi-telephone-x"></i>
+                </button>
+                <button class="call-btn hold" onclick="toggleHold()" id="holdBtn" title="Halten">
+                    <i class="bi bi-pause"></i>
+                </button>
+            </div>
+            
+            <div class="text-center mt-3">
+                <small class="text-muted" id="callDuration"></small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Incoming Call Modal -->
+    <div class="incoming-call-modal" id="incomingCallModal">
+        <div class="incoming-call-content">
+            <div class="incoming-caller-icon">
+                <i class="bi bi-telephone-inbound"></i>
+            </div>
+            <h3>Eingehender Notruf</h3>
+            <h2 id="incomingCallerName">Unbekannt</h2>
+            <p class="text-muted" id="incomingCallerNumber">+49...</p>
+            <div class="d-flex justify-content-center gap-4 mt-4">
+                <button class="call-btn hangup" onclick="rejectCall()" style="width: 80px; height: 80px;">
+                    <i class="bi bi-telephone-x"></i>
+                </button>
+                <button class="call-btn answer" onclick="answerCall()" style="width: 80px; height: 80px;">
+                    <i class="bi bi-telephone"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Alert Detail Modal -->
+    <div class="modal fade" id="alertDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger"></i> Alarm Details</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="alertDetailContent">
+                    <!-- Alert details will be loaded here -->
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                    <button type="button" class="btn btn-warning" onclick="acknowledgeAlert()">
+                        <i class="bi bi-check"></i> Bestätigen
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="resolveAlert()">
+                        <i class="bi bi-check-all"></i> Abschließen
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="service-hub.js"></script>
+</body>
+</html>

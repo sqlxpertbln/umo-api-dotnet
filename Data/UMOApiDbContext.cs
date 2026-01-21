@@ -69,6 +69,15 @@ public class UMOApiDbContext : DbContext
     public DbSet<Payment> Payments { get; set; }
     public DbSet<CostCenter> CostCenters { get; set; }
 
+    // Service Hub / Emergency entities
+    public DbSet<EmergencyDevice> EmergencyDevices { get; set; }
+    public DbSet<EmergencyContact> EmergencyContacts { get; set; }
+    public DbSet<EmergencyAlert> EmergencyAlerts { get; set; }
+    public DbSet<Dispatcher> Dispatchers { get; set; }
+    public DbSet<CallLog> CallLogs { get; set; }
+    public DbSet<SipConfiguration> SipConfigurations { get; set; }
+    public DbSet<DispatcherShift> DispatcherShifts { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -734,3 +743,4 @@ public class UMOApiDbContext : DbContext
         );
     }
 }
+

@@ -70,7 +70,7 @@ namespace UMOApi.Models
         [Key]
         public int Id { get; set; }
         
-        public int ClientId { get; set; }
+        public int? ClientId { get; set; } // Nullable für Seed-Daten
         public Client? Client { get; set; }
         
         [Required]

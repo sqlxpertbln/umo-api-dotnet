@@ -133,6 +133,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
         }
     };
     context.Dispatchers.AddRange(dispatchers);
+    await context.SaveChangesAsync();
 
     // Add SIP Configuration
     var sipConfig = new UMOApi.Models.SipConfiguration
@@ -148,6 +149,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
         IsActive = true
     };
     context.SipConfigurations.Add(sipConfig);
+    await context.SaveChangesAsync();
 
     // Add Emergency Devices
     var devices = new[]
@@ -161,7 +163,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
             SerialNumber = "AW-2024-001",
             PhoneNumber = "+4930123456001",
             SipIdentifier = "aw001",
-            ClientId = 1,
+            ClientId = null, // Wird später zugewiesen
             Status = "Active",
             IsOnline = true,
             BatteryLevel = 85,
@@ -176,7 +178,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
             SerialNumber = "TN-2024-002",
             PhoneNumber = "+4930123456002",
             SipIdentifier = "hn002",
-            ClientId = 2,
+            ClientId = null, // Wird später zugewiesen
             Status = "Active",
             IsOnline = true,
             BatteryLevel = 100,
@@ -191,7 +193,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
             SerialNumber = "BS-2024-003",
             PhoneNumber = "+4930123456003",
             SipIdentifier = "mn003",
-            ClientId = 3,
+            ClientId = null, // Wird später zugewiesen
             Status = "Active",
             IsOnline = false,
             BatteryLevel = 45,
@@ -206,7 +208,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
             SerialNumber = "AW-2024-004",
             PhoneNumber = "+4930123456004",
             SipIdentifier = "aw004",
-            ClientId = 4,
+            ClientId = null, // Wird später zugewiesen
             Status = "Active",
             IsOnline = true,
             BatteryLevel = 92,
@@ -214,13 +216,14 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
         }
     };
     context.EmergencyDevices.AddRange(devices);
+    await context.SaveChangesAsync();
 
     // Add Emergency Contacts
     var contacts = new[]
     {
         new UMOApi.Models.EmergencyContact
         {
-            ClientId = 1,
+            ClientId = null, // Wird später zugewiesen
             FirstName = "Peter",
             LastName = "Müller",
             Relationship = "Sohn",
@@ -234,7 +237,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
         },
         new UMOApi.Models.EmergencyContact
         {
-            ClientId = 1,
+            ClientId = null, // Wird später zugewiesen
             FirstName = "Anna",
             LastName = "Müller",
             Relationship = "Tochter",
@@ -248,7 +251,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
         },
         new UMOApi.Models.EmergencyContact
         {
-            ClientId = 2,
+            ClientId = null, // Wird später zugewiesen
             FirstName = "Klaus",
             LastName = "Schmidt",
             Relationship = "Ehemann",
@@ -262,7 +265,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
         },
         new UMOApi.Models.EmergencyContact
         {
-            ClientId = 3,
+            ClientId = null, // Wird später zugewiesen
             FirstName = "Dr. med.",
             LastName = "Hoffmann",
             Relationship = "Hausarzt",
@@ -276,6 +279,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
         }
     };
     context.EmergencyContacts.AddRange(contacts);
+    await context.SaveChangesAsync();
 
     // Add some sample alerts
     var alerts = new[]
@@ -285,8 +289,8 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
             AlertType = "FallDetection",
             Priority = "High",
             Status = "Resolved",
-            EmergencyDeviceId = 1,
-            ClientId = 1,
+            EmergencyDeviceId = null, // Wird später zugewiesen
+            ClientId = null,
             CallerNumber = "+4930123456001",
             AlertTime = DateTime.UtcNow.AddHours(-3),
             AcknowledgedTime = DateTime.UtcNow.AddHours(-3).AddMinutes(1),
@@ -302,8 +306,8 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
             AlertType = "ManualAlert",
             Priority = "Critical",
             Status = "InProgress",
-            EmergencyDeviceId = 2,
-            ClientId = 2,
+            EmergencyDeviceId = null, // Wird später zugewiesen
+            ClientId = null,
             CallerNumber = "+4930123456002",
             AlertTime = DateTime.UtcNow.AddMinutes(-10),
             AcknowledgedTime = DateTime.UtcNow.AddMinutes(-9),
@@ -317,8 +321,8 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
             AlertType = "FallDetection",
             Priority = "High",
             Status = "New",
-            EmergencyDeviceId = 4,
-            ClientId = 4,
+            EmergencyDeviceId = null, // Wird später zugewiesen
+            ClientId = null,
             CallerNumber = "+4930123456004",
             AlertTime = DateTime.UtcNow.AddMinutes(-2),
             Latitude = 52.5200,
@@ -328,6 +332,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
         }
     };
     context.EmergencyAlerts.AddRange(alerts);
+    await context.SaveChangesAsync();
 
     // Add sample call logs
     var callLogs = new[]
@@ -338,9 +343,9 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
             Direction = "Inbound",
             CallerNumber = "+4930123456001",
             CalleeNumber = "101",
-            DispatcherId = 1,
-            ClientId = 1,
-            EmergencyAlertId = 1,
+            DispatcherId = null, // Wird später zugewiesen
+            ClientId = null,
+            EmergencyAlertId = null,
             Status = "Ended",
             StartTime = DateTime.UtcNow.AddHours(-3),
             ConnectTime = DateTime.UtcNow.AddHours(-3).AddSeconds(5),
@@ -356,10 +361,10 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
             Direction = "Outbound",
             CallerNumber = "101",
             CalleeNumber = "+4930111222333",
-            DispatcherId = 1,
-            ClientId = 1,
-            EmergencyContactId = 1,
-            EmergencyAlertId = 1,
+            DispatcherId = null, // Wird später zugewiesen
+            ClientId = null,
+            EmergencyContactId = null,
+            EmergencyAlertId = null,
             Status = "Ended",
             StartTime = DateTime.UtcNow.AddHours(-3).AddMinutes(6),
             ConnectTime = DateTime.UtcNow.AddHours(-3).AddMinutes(6).AddSeconds(10),
@@ -375,9 +380,9 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
             Direction = "Inbound",
             CallerNumber = "+4930123456002",
             CalleeNumber = "102",
-            DispatcherId = 2,
-            ClientId = 2,
-            EmergencyAlertId = 2,
+            DispatcherId = null, // Wird später zugewiesen
+            ClientId = null,
+            EmergencyAlertId = null,
             Status = "Connected",
             StartTime = DateTime.UtcNow.AddMinutes(-10),
             ConnectTime = DateTime.UtcNow.AddMinutes(-9).AddSeconds(30),

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Runtime.CompilerServices;
 using UMOApi.Data;
 using UMOApi.Services;
 

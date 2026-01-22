@@ -1,0 +1,138 @@
+name: UMO API CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, test, dev ]
+  pull_request:
+    branches: [ main, test, dev ]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  AZURE_WEBAPP_PACKAGE_PATH: './publish'
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Run Unit Tests
+      run: dotnet test Tests/UMOApi.Tests.csproj --configuration Release --no-build --verbosity normal --filter "FullyQualifiedName!~Integration"
+      
+    - name: Publish
+      run: dotnet publish -c Release -o ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: webapp
+        path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+  deploy-dev:
+    name: Deploy to DEV
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
+    environment:
+      name: development
+      url: https://umo-api-dev.azurewebsites.net
+    
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: webapp
+        path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+    - name: Deploy to Azure Web App (DEV)
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: 'umo-api-dev'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_DEV }}
+        package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+  deploy-test:
+    name: Deploy to TEST
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/test' && github.event_name == 'push'
+    environment:
+      name: testing
+      url: https://umo-api-test.azurewebsites.net
+    
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: webapp
+        path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+    - name: Deploy to Azure Web App (TEST)
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: 'umo-api-test'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_TEST }}
+        package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+  integration-tests:
+    name: Run Integration Tests
+    needs: [deploy-dev]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Run Integration Tests
+      run: dotnet test Tests/UMOApi.Tests.csproj --configuration Release --no-build --verbosity normal --filter "FullyQualifiedName~Integration"
+      env:
+        API_BASE_URL: https://umo-api-dev.azurewebsites.net
+
+  deploy-prod:
+    name: Deploy to PRODUCTION
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://umo-api-sqlxpert-bpdeh4g3ewaybafn.germanywestcentral-01.azurewebsites.net
+    
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: webapp
+        path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+    - name: Deploy to Azure Web App (PROD)
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: 'umo-api-sqlxpert'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PROD }}
+        package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}

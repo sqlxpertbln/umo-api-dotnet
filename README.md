@@ -79,3 +79,5 @@ Die Anwendung wird automatisch gebaut und deployed.
 ## Lizenz
 
 MIT License
+
+# CI/CD Pipeline aktiv - Thu Jan 22 11:08:03 EST 2026

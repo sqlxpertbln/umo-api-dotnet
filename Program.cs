@@ -8,9 +8,22 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 
-// Configure SQLite Database
-builder.Services.AddDbContext<UMOApiDbContext>(options =>
-    options.UseSqlite("Data Source=UMOApi.db"));
+// Configure Database - Azure SQL or SQLite fallback
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (!string.IsNullOrEmpty(connectionString) && connectionString.Contains("database.windows.net"))
+{
+    // Azure SQL Server
+    builder.Services.AddDbContext<UMOApiDbContext>(options =>
+        options.UseSqlServer(connectionString));
+    Console.WriteLine("Using Azure SQL Database");
+}
+else
+{
+    // SQLite fallback for local development
+    builder.Services.AddDbContext<UMOApiDbContext>(options =>
+        options.UseSqlite("Data Source=UMOApi.db"));
+    Console.WriteLine("Using SQLite Database");
+}
 
 // Register sipgate service
 builder.Services.AddSingleton<ISipgateService, SipgateService>();
@@ -49,14 +62,36 @@ builder.Services.AddSwaggerGen(c =>
     }
 });
 
+// Add Application Insights
+var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+if (!string.IsNullOrEmpty(appInsightsConnectionString))
+{
+    builder.Services.AddApplicationInsightsTelemetry(options =>
+    {
+        options.ConnectionString = appInsightsConnectionString;
+    });
+    Console.WriteLine("Application Insights enabled");
+}
+
 var app = builder.Build();
 
 // Ensure database is created and seeded
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<UMOApiDbContext>();
-    // Ensure database is created (without deleting existing data)
-    context.Database.EnsureCreated();
+    
+    // For SQL Server, use migrations; for SQLite, use EnsureCreated
+    var dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (!string.IsNullOrEmpty(dbConnectionString) && dbConnectionString.Contains("database.windows.net"))
+    {
+        // Apply migrations for Azure SQL
+        context.Database.Migrate();
+    }
+    else
+    {
+        // Ensure database is created for SQLite
+        context.Database.EnsureCreated();
+    }
     
     // Seed Service Hub data
     await SeedServiceHubDataAsync(context);
@@ -177,7 +212,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
             SerialNumber = "AW-2024-001",
             PhoneNumber = "+4930123456001",
             SipIdentifier = "aw001",
-            ClientId = null, // Wird später zugewiesen
+            ClientId = null,
             Status = "Active",
             IsOnline = true,
             BatteryLevel = 85,
@@ -192,7 +227,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
             SerialNumber = "TN-2024-002",
             PhoneNumber = "+4930123456002",
             SipIdentifier = "hn002",
-            ClientId = null, // Wird später zugewiesen
+            ClientId = null,
             Status = "Active",
             IsOnline = true,
             BatteryLevel = 100,
@@ -207,7 +242,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
             SerialNumber = "BS-2024-003",
             PhoneNumber = "+4930123456003",
             SipIdentifier = "mn003",
-            ClientId = null, // Wird später zugewiesen
+            ClientId = null,
             Status = "Active",
             IsOnline = false,
             BatteryLevel = 45,
@@ -222,7 +257,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
             SerialNumber = "AW-2024-004",
             PhoneNumber = "+4930123456004",
             SipIdentifier = "aw004",
-            ClientId = null, // Wird später zugewiesen
+            ClientId = null,
             Status = "Active",
             IsOnline = true,
             BatteryLevel = 92,
@@ -237,7 +272,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
     {
         new UMOApi.Models.EmergencyContact
         {
-            ClientId = null, // Wird später zugewiesen
+            ClientId = null,
             FirstName = "Peter",
             LastName = "Müller",
             Relationship = "Sohn",
@@ -251,7 +286,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
         },
         new UMOApi.Models.EmergencyContact
         {
-            ClientId = null, // Wird später zugewiesen
+            ClientId = null,
             FirstName = "Anna",
             LastName = "Müller",
             Relationship = "Tochter",
@@ -265,7 +300,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
         },
         new UMOApi.Models.EmergencyContact
         {
-            ClientId = null, // Wird später zugewiesen
+            ClientId = null,
             FirstName = "Klaus",
             LastName = "Schmidt",
             Relationship = "Ehemann",
@@ -279,7 +314,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
         },
         new UMOApi.Models.EmergencyContact
         {
-            ClientId = null, // Wird später zugewiesen
+            ClientId = null,
             FirstName = "Dr. med.",
             LastName = "Hoffmann",
             Relationship = "Hausarzt",
@@ -303,7 +338,7 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
             AlertType = "FallDetection",
             Priority = "High",
             Status = "Resolved",
-            EmergencyDeviceId = null, // Wird später zugewiesen
+            EmergencyDeviceId = null,
             ClientId = null,
             CallerNumber = "+4930123456001",
             AlertTime = DateTime.UtcNow.AddHours(-3),
@@ -320,91 +355,16 @@ async Task SeedServiceHubDataAsync(UMOApiDbContext context)
             AlertType = "ManualAlert",
             Priority = "Critical",
             Status = "InProgress",
-            EmergencyDeviceId = null, // Wird später zugewiesen
+            EmergencyDeviceId = null,
             ClientId = null,
             CallerNumber = "+4930123456002",
             AlertTime = DateTime.UtcNow.AddMinutes(-10),
             AcknowledgedTime = DateTime.UtcNow.AddMinutes(-9),
             AcknowledgedByDispatcherId = 2,
             Notes = "Klient meldet Unwohlsein. Angehörige werden kontaktiert.",
-            HeartRate = 95,
-            ContactsNotified = true
-        },
-        new UMOApi.Models.EmergencyAlert
-        {
-            AlertType = "FallDetection",
-            Priority = "High",
-            Status = "New",
-            EmergencyDeviceId = null, // Wird später zugewiesen
-            ClientId = null,
-            CallerNumber = "+4930123456004",
-            AlertTime = DateTime.UtcNow.AddMinutes(-2),
-            Latitude = 52.5200,
-            Longitude = 13.4050,
-            HeartRate = 110,
-            Notes = "Automatische Sturzerkennung durch Apple Watch"
+            HeartRate = 95
         }
     };
     context.EmergencyAlerts.AddRange(alerts);
-    await context.SaveChangesAsync();
-
-    // Add sample call logs
-    var callLogs = new[]
-    {
-        new UMOApi.Models.CallLog
-        {
-            SipgateCallId = "call-001",
-            Direction = "Inbound",
-            CallerNumber = "+4930123456001",
-            CalleeNumber = "101",
-            DispatcherId = null, // Wird später zugewiesen
-            ClientId = null,
-            EmergencyAlertId = null,
-            Status = "Ended",
-            StartTime = DateTime.UtcNow.AddHours(-3),
-            ConnectTime = DateTime.UtcNow.AddHours(-3).AddSeconds(5),
-            EndTime = DateTime.UtcNow.AddHours(-3).AddMinutes(5),
-            DurationSeconds = 295,
-            EndReason = "Completed",
-            CallType = "Emergency",
-            Notes = "Sturzerkennung - Fehlalarm bestätigt"
-        },
-        new UMOApi.Models.CallLog
-        {
-            SipgateCallId = "call-002",
-            Direction = "Outbound",
-            CallerNumber = "101",
-            CalleeNumber = "+4930111222333",
-            DispatcherId = null, // Wird später zugewiesen
-            ClientId = null,
-            EmergencyContactId = null,
-            EmergencyAlertId = null,
-            Status = "Ended",
-            StartTime = DateTime.UtcNow.AddHours(-3).AddMinutes(6),
-            ConnectTime = DateTime.UtcNow.AddHours(-3).AddMinutes(6).AddSeconds(10),
-            EndTime = DateTime.UtcNow.AddHours(-3).AddMinutes(10),
-            DurationSeconds = 230,
-            EndReason = "Completed",
-            CallType = "Callback",
-            Notes = "Rückruf an Sohn - Entwarnung gegeben"
-        },
-        new UMOApi.Models.CallLog
-        {
-            SipgateCallId = "call-003",
-            Direction = "Inbound",
-            CallerNumber = "+4930123456002",
-            CalleeNumber = "102",
-            DispatcherId = null, // Wird später zugewiesen
-            ClientId = null,
-            EmergencyAlertId = null,
-            Status = "Connected",
-            StartTime = DateTime.UtcNow.AddMinutes(-10),
-            ConnectTime = DateTime.UtcNow.AddMinutes(-9).AddSeconds(30),
-            CallType = "Emergency",
-            Notes = "Aktiver Notruf - Klient am Telefon"
-        }
-    };
-    context.CallLogs.AddRange(callLogs);
-
     await context.SaveChangesAsync();
 }

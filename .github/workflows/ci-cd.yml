@@ -24,34 +24,33 @@ env:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
-        
-    - name: Restore dependencies
-      run: dotnet restore UMOApi.csproj
-      
-    - name: Build
-      run: dotnet build UMOApi.csproj --configuration Release --no-restore
-      
-    - name: Run Unit Tests
-      run: dotnet test Tests/UMOApi.Tests.csproj --configuration Release --verbosity normal --filter "FullyQualifiedName!~Integration"
-      continue-on-error: false
-      
-    - name: Publish
-      run: dotnet publish UMOApi.csproj --configuration Release --output ./publish
-      
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: webapp
-        path: ./publish
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore UMOApi.csproj
+
+      - name: Build
+        run: dotnet build UMOApi.csproj --configuration Release --no-restore
+
+      - name: Run Unit Tests
+        run: dotnet test Tests/UMOApi.Tests.csproj --configuration Release --verbosity normal --filter "FullyQualifiedName!~Integration"
+        continue-on-error: false
+
+      - name: Publish
+        run: dotnet publish UMOApi.csproj --configuration Release --output ./publish
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webapp
+          path: ./publish
 
   deploy-dev:
     needs: build-and-test
@@ -60,20 +59,23 @@ jobs:
     environment:
       name: Development
       url: https://umo-api-dev.azurewebsites.net
-    
     steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: webapp
-        path: ./publish
-        
-    - name: Deploy to Azure Web App (DEV)
-      uses: azure/webapps-deploy@v3
-      with:
-        app-name: ${{ env.AZURE_WEBAPP_NAME_DEV }}
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_DEV }}
-        package: ./publish
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webapp
+          path: ./publish
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to Azure Web App (DEV)
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME_DEV }}
+          package: ./publish
 
   deploy-test:
     needs: build-and-test
@@ -82,20 +84,23 @@ jobs:
     environment:
       name: Test
       url: https://umo-api-test.azurewebsites.net
-    
     steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: webapp
-        path: ./publish
-        
-    - name: Deploy to Azure Web App (TEST)
-      uses: azure/webapps-deploy@v3
-      with:
-        app-name: ${{ env.AZURE_WEBAPP_NAME_TEST }}
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_TEST }}
-        package: ./publish
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webapp
+          path: ./publish
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to Azure Web App (TEST)
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME_TEST }}
+          package: ./publish
 
   deploy-prod:
     needs: build-and-test
@@ -104,17 +109,20 @@ jobs:
     environment:
       name: Production
       url: https://umo-api-sqlxpert-bpdeh4g3ewaybafn.germanywestcentral-01.azurewebsites.net
-    
     steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: webapp
-        path: ./publish
-        
-    - name: Deploy to Azure Web App (PROD)
-      uses: azure/webapps-deploy@v3
-      with:
-        app-name: ${{ env.AZURE_WEBAPP_NAME_PROD }}
-        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_PROD }}
-        package: ./publish
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webapp
+          path: ./publish
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to Azure Web App (PROD)
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME_PROD }}
+          package: ./publish

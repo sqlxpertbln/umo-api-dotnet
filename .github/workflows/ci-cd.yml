@@ -18,7 +18,7 @@ env:
   DOTNET_VERSION: '8.0.x'
   AZURE_WEBAPP_NAME_DEV: 'umo-api-dev'
   AZURE_WEBAPP_NAME_TEST: 'umo-api-test'
-  AZURE_WEBAPP_NAME_PROD: 'umo-api-sqlxpert-bpdeh4g3ewaybafn'
+  AZURE_WEBAPP_NAME_PROD: 'umo-api-sqlxpert'
 
 
 jobs:

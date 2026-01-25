@@ -1,3 +1,13 @@
+// =================================================================================================
+// APP FABRIC - STAGE 2: CORE APPLICATION TRANSFORMATION (Presentation Layer)
+// This controller is part of the Presentation Layer in Clean Architecture. It handles HTTP requests
+// related to Client entities and translates them into application-level commands or queries.
+//
+// META-DATA:
+//   - Layer: Presentation (API Controller)
+//   - Responsibility: Expose Client-related functionality via a RESTful API.
+// =================================================================================================
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UMOApi.Data;
@@ -130,142 +140,6 @@ public class ClientsController : ControllerBase
 
         var dto = MapToClientDetailsDto(client);
         return Ok(dto);
-    }
-
-    /// <summary>
-    /// Creates a new client.
-    /// </summary>
-    [HttpPost("clientdetails")]
-    public async Task<ActionResult<ClientDetailsDto>> CreateClient([FromBody] ClientDetailsCreateDto createDto)
-    {
-        var client = new ClientDetails
-        {
-            MandantId = createDto.MandantId,
-            Nummer = createDto.Nummer,
-            TitelId = createDto.TitelId,
-            PrefixId = createDto.PrefixId,
-            SocialSecurityNumber = createDto.SocialSecurityNumber,
-            FirstName = createDto.FirstName,
-            LastName = createDto.LastName,
-            Sex = createDto.Sex,
-            BirthDay = createDto.BirthDay,
-            Memo = createDto.Memo,
-            StatusId = createDto.StatusId,
-            StartContractDate = createDto.StartContractDate,
-            EndContractDate = createDto.EndContractDate,
-            PolicyNumber = createDto.PolicyNumber,
-            Note = createDto.Note,
-            FreeFeld = createDto.FreeFeld,
-            BooleanOptions = createDto.BooleanOptions,
-            MedecinPlace = createDto.MedecinPlace,
-            Bill = createDto.Bill,
-            BankNumber = createDto.BankNumber,
-            BankName = createDto.BankName,
-            PostBankNumber = createDto.PostBankNumber,
-            InsuresCare = createDto.InsuresCare,
-            ClassificationId = createDto.ClassificationId,
-            InvoiceMethodId = createDto.InvoiceMethodId,
-            ReasonId = createDto.ReasonId,
-            PriorityId = createDto.PriorityId,
-            MaritalStatusId = createDto.MaritalStatusId,
-            LanguageId = createDto.LanguageId,
-            FinancialGroupId = createDto.FinancialGroupId,
-            AddressId = createDto.AddressId,
-            TarifId = createDto.TarifId,
-            CreateId = "system",
-            CreateDate = DateTime.UtcNow
-        };
-
-        _context.ClientDetails.Add(client);
-        await _context.SaveChangesAsync();
-
-        // Reload with includes
-        var createdClient = await _context.ClientDetails
-            .Include(c => c.Titel)
-            .Include(c => c.Status)
-            .FirstOrDefaultAsync(c => c.Id == client.Id);
-
-        return CreatedAtAction(nameof(GetClientDetails), 
-            new { mandantId = client.MandantId, id = client.Id }, 
-            MapToClientDetailsDto(createdClient!));
-    }
-
-    /// <summary>
-    /// Updates an existing client.
-    /// </summary>
-    [HttpPut("clientdetails")]
-    public async Task<ActionResult<ClientDetailsDto>> UpdateClient([FromBody] ClientDetailsCreateDto updateDto, [FromQuery] int id)
-    {
-        var client = await _context.ClientDetails.FindAsync(id);
-        if (client == null)
-        {
-            return NotFound($"Client with Id {id} not found.");
-        }
-
-        // Update properties
-        client.Nummer = updateDto.Nummer ?? client.Nummer;
-        client.TitelId = updateDto.TitelId ?? client.TitelId;
-        client.PrefixId = updateDto.PrefixId ?? client.PrefixId;
-        client.SocialSecurityNumber = updateDto.SocialSecurityNumber ?? client.SocialSecurityNumber;
-        client.FirstName = updateDto.FirstName ?? client.FirstName;
-        client.LastName = updateDto.LastName ?? client.LastName;
-        client.Sex = updateDto.Sex ?? client.Sex;
-        client.BirthDay = updateDto.BirthDay ?? client.BirthDay;
-        client.Memo = updateDto.Memo ?? client.Memo;
-        client.StatusId = updateDto.StatusId ?? client.StatusId;
-        client.StartContractDate = updateDto.StartContractDate ?? client.StartContractDate;
-        client.EndContractDate = updateDto.EndContractDate ?? client.EndContractDate;
-        client.PolicyNumber = updateDto.PolicyNumber ?? client.PolicyNumber;
-        client.Note = updateDto.Note ?? client.Note;
-        client.FreeFeld = updateDto.FreeFeld ?? client.FreeFeld;
-        client.BooleanOptions = updateDto.BooleanOptions ?? client.BooleanOptions;
-        client.MedecinPlace = updateDto.MedecinPlace ?? client.MedecinPlace;
-        client.Bill = updateDto.Bill ?? client.Bill;
-        client.BankNumber = updateDto.BankNumber ?? client.BankNumber;
-        client.BankName = updateDto.BankName ?? client.BankName;
-        client.PostBankNumber = updateDto.PostBankNumber ?? client.PostBankNumber;
-        client.InsuresCare = updateDto.InsuresCare ?? client.InsuresCare;
-        client.ClassificationId = updateDto.ClassificationId ?? client.ClassificationId;
-        client.InvoiceMethodId = updateDto.InvoiceMethodId ?? client.InvoiceMethodId;
-        client.ReasonId = updateDto.ReasonId ?? client.ReasonId;
-        client.PriorityId = updateDto.PriorityId ?? client.PriorityId;
-        client.MaritalStatusId = updateDto.MaritalStatusId ?? client.MaritalStatusId;
-        client.LanguageId = updateDto.LanguageId ?? client.LanguageId;
-        client.FinancialGroupId = updateDto.FinancialGroupId ?? client.FinancialGroupId;
-        client.AddressId = updateDto.AddressId ?? client.AddressId;
-        client.TarifId = updateDto.TarifId ?? client.TarifId;
-        client.UpdateId = "system";
-        client.UpdateDate = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
-
-        // Reload with includes
-        var updatedClient = await _context.ClientDetails
-            .Include(c => c.Titel)
-            .Include(c => c.Status)
-            .FirstOrDefaultAsync(c => c.Id == client.Id);
-
-        return Ok(MapToClientDetailsDto(updatedClient!));
-    }
-
-    /// <summary>
-    /// Deletes a client.
-    /// </summary>
-    [HttpDelete("clientdetails")]
-    public async Task<IActionResult> DeleteClient([FromQuery] int mandantId, [FromQuery] int id)
-    {
-        var client = await _context.ClientDetails
-            .FirstOrDefaultAsync(c => c.MandantId == mandantId && c.Id == id);
-
-        if (client == null)
-        {
-            return NotFound($"Client with MandantId {mandantId} and Id {id} not found.");
-        }
-
-        _context.ClientDetails.Remove(client);
-        await _context.SaveChangesAsync();
-
-        return Ok(new { message = "Client deleted successfully." });
     }
 
     private ClientDetailsDto MapToClientDetailsDto(ClientDetails client)

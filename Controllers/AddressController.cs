@@ -1,3 +1,13 @@
+// =================================================================================================
+// APP FABRIC - STAGE 2: CORE APPLICATION TRANSFORMATION (Presentation Layer)
+// This controller is part of the Presentation Layer in Clean Architecture. It handles HTTP requests
+// related to Address entities and translates them into application-level commands or queries.
+//
+// META-DATA:
+//   - Layer: Presentation (API Controller)
+//   - Responsibility: Expose Address-related functionality via a RESTful API.
+// =================================================================================================
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UMOApi.Data;

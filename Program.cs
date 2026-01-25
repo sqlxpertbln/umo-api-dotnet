@@ -3,16 +3,37 @@ using System.Runtime.CompilerServices;
 using UMOApi.Data;
 using UMOApi.Services;
 
+// =================================================================================================
+// APP FABRIC - STAGE 2: CORE APPLICATION TRANSFORMATION
+// This file represents the entry point of the transformed core application.
+// It configures services, database, and the HTTP pipeline based on the App Fabric's
+// architectural guidelines (Clean Architecture, .NET 8, EF Core).
+//
+// META-DATA:
+//   - Transformation-Target: .NET 8 Web API
+//   - Architecture: Clean Architecture (inferred)
+//   - Database-Provider: Entity Framework Core (Azure SQL / SQLite)
+//   - Core-Functionality: UMO API for Emergency Call Center Management
+// =================================================================================================
+
 var builder = WebApplication.CreateBuilder(args);
+
+// =================================================================================================
+// STAGE 2.1: SERVICE REGISTRATION (Dependency Injection)
+// All services and dependencies are registered here. This follows the IServiceCollection pattern
+// and allows for loose coupling and testability, key principles of Clean Architecture.
+// =================================================================================================
 
 // Add services to the container.
 builder.Services.AddControllers();
 
 // Configure Database - Azure SQL or SQLite fallback
+// This section demonstrates a dynamic database provider selection, a key feature for
+// flexible deployment environments (local vs. cloud).
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (!string.IsNullOrEmpty(connectionString) && connectionString.Contains("database.windows.net"))
 {
-    // Azure SQL Server
+    // Azure SQL Server - Production Environment
     builder.Services.AddDbContext<UMOApiDbContext>(options =>
         options.UseSqlServer(connectionString));
     Console.WriteLine("Using Azure SQL Database");
@@ -25,13 +46,15 @@ else
     Console.WriteLine("Using SQLite Database");
 }
 
-// Register sipgate service
+// Register sipgate service for VoIP integration
+// This service encapsulates the logic for interacting with the Sipgate API.
 builder.Services.AddSingleton<ISipgateService, SipgateService>();
 
-// Register SIPSorcery telephony service
+// Register SIPSorcery telephony service for advanced telephony features
 builder.Services.AddSingleton<SipSorceryTelephonyService>();
 
 // Configure CORS for web client
+// Allows the frontend application to communicate with the API.
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -53,7 +76,7 @@ builder.Services.AddSwaggerGen(c =>
         Description = "API for managing clients, devices, providers, emergency services, and system entries in the UMO system. Includes Service Hub for VoIP telephony via sipgate."
     });
     
-    // Enable XML comments for better documentation
+    // Enable XML comments for better documentation in Swagger UI
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     if (File.Exists(xmlPath))
@@ -62,7 +85,7 @@ builder.Services.AddSwaggerGen(c =>
     }
 });
 
-// Add Application Insights
+// Add Application Insights for monitoring in Azure
 var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
 if (!string.IsNullOrEmpty(appInsightsConnectionString))
 {
@@ -73,9 +96,15 @@ if (!string.IsNullOrEmpty(appInsightsConnectionString))
     Console.WriteLine("Application Insights enabled");
 }
 
+// =================================================================================================
+// STAGE 2.2: HTTP REQUEST PIPELINE CONFIGURATION
+// The middleware pipeline is configured here. The order of middleware is crucial for
+// security, performance, and functionality.
+// =================================================================================================
+
 var app = builder.Build();
 
-// Ensure database is created and seeded
+// Ensure database is created and seeded on startup
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<UMOApiDbContext>();
@@ -120,18 +149,28 @@ app.UseCors("AllowAll");
 
 app.UseAuthorization();
 
-// Serve static files for the web client
+// Serve static files for the web client (if any)
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.MapControllers();
 
-// Fallback to index.html for SPA routing
+// Fallback to index.html for Single Page Application (SPA) routing
 app.MapFallbackToFile("index.html");
+
+// =================================================================================================
+// STAGE 3: DEPLOYMENT AUTOMATION (Aspire Orchestration)
+// The app.Run() command starts the application. In an Aspire project, this would be
+// orchestrated by the AppHost, which manages the lifecycle of all services.
+// =================================================================================================
 
 app.Run();
 
-// Seed method for Service Hub data
+// =================================================================================================
+// STAGE 1: TEMPLATE & MOCKUP (Seed Data)
+// This method provides the initial data for the application, acting as a functional mockup.
+// In a real App Fabric scenario, this data could be derived from a JSON template.
+// =================================================================================================
 async Task SeedServiceHubDataAsync(UMOApiDbContext context)
 {
     // Check if already seeded

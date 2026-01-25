@@ -1,3 +1,13 @@
+// =================================================================================================
+// APP FABRIC - STAGE 2: CORE APPLICATION TRANSFORMATION (Presentation Layer)
+// This controller is part of the Presentation Layer in Clean Architecture. It handles HTTP requests
+// related to SystemEntry entities and translates them into application-level commands or queries.
+//
+// META-DATA:
+//   - Layer: Presentation (API Controller)
+//   - Responsibility: Expose SystemEntry-related functionality via a RESTful API.
+// =================================================================================================
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UMOApi.Data;
@@ -479,7 +489,7 @@ public class SystemEntryController : ControllerBase
             "clients" => Ok(await _context.ClientDetails.Take(100).ToListAsync()),
             "devices" => Ok(await _context.DeviceDetails.Take(100).ToListAsync()),
             "providers" => Ok(await _context.ProfessionalProviderDetails.Take(100).ToListAsync()),
-            _ => NotFound($"View '{viewName}' not found.")
+            _ => NotFound($"View \'{viewName}\' not found.")
         };
     }
 
@@ -543,7 +553,7 @@ public class SystemEntryController : ControllerBase
         return Ok(MapToSystemEntryDto(entry));
     }
 
-    private static SystemEntryDto MapToSystemEntryDto(SystemEntry entry)
+    private SystemEntryDto MapToSystemEntryDto(SystemEntry entry)
     {
         return new SystemEntryDto
         {
@@ -558,41 +568,41 @@ public class SystemEntryController : ControllerBase
         };
     }
 
-    private static string GetTypeCodeFromKind(string kind)
+    private string GetTypeCodeFromKind(string kind)
     {
-        return kind.ToLower() switch
+        return kind.ToUpper() switch
         {
-            "title" => "T",
-            "prefix" => "P",
-            "status" => "S",
-            "maritalstatus" => "M",
-            "invoicemethod" => "I",
-            "reason" => "R",
-            "priority" => "PR",
-            "language" => "L",
-            "insuranceclass" => "IC",
-            "insurancecare" => "ICR",
-            "financialgroup" => "FG",
-            _ => kind.ToUpper()
+            "TITLE" => "T",
+            "PREFIX" => "P",
+            "CLIENTSTATUS" => "S",
+            "MARITALSTATUS" => "M",
+            "INVOICEMETHOD" => "I",
+            "REASON" => "R",
+            "PRIORITY" => "PR",
+            "LANGUAGE" => "L",
+            "INSURANCECLASS" => "IC",
+            "INSURANCECARE" => "ICR",
+            "FINANCIALGROUP" => "FG",
+            _ => ""
         };
     }
 
-    private static string GetKindFromTypeCode(string typeCode)
+    private string GetKindFromTypeCode(string typeCode)
     {
         return typeCode switch
         {
             "T" => "title",
             "P" => "prefix",
-            "S" => "status",
-            "M" => "maritalstatus",
-            "I" => "invoicemethod",
+            "S" => "clientStatus",
+            "M" => "maritalStatus",
+            "I" => "invoiceMethod",
             "R" => "reason",
             "PR" => "priority",
             "L" => "language",
-            "IC" => "insuranceclass",
-            "ICR" => "insurancecare",
-            "FG" => "financialgroup",
-            _ => typeCode.ToLower()
+            "IC" => "insuranceClass",
+            "ICR" => "insuranceCare",
+            "FG" => "financialGroup",
+            _ => "unknown"
         };
     }
 

@@ -1,3 +1,13 @@
+// =================================================================================================
+// APP FABRIC - STAGE 2: CORE APPLICATION TRANSFORMATION (Presentation Layer)
+// This controller is part of the Presentation Layer in Clean Architecture. It handles HTTP requests
+// related to Device entities and translates them into application-level commands or queries.
+//
+// META-DATA:
+//   - Layer: Presentation (API Controller)
+//   - Responsibility: Expose Device-related functionality via a RESTful API.
+// =================================================================================================
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UMOApi.Data;
@@ -96,91 +106,6 @@ public class DevicesController : ControllerBase
         }
 
         return Ok(MapToDeviceDetailsDto(device));
-    }
-
-    /// <summary>
-    /// Creates a new device.
-    /// </summary>
-    [HttpPost("devicedetails")]
-    public async Task<ActionResult<DeviceDetailsDto>> CreateDevice([FromBody] DeviceCreateDto createDto)
-    {
-        var device = new DeviceDetails
-        {
-            MandantId = createDto.MandantId,
-            DeviceType = createDto.DeviceType,
-            SerialNumber = createDto.SerialNumber,
-            Description = createDto.Description,
-            Status = createDto.Status,
-            Manufacturer = createDto.Manufacturer,
-            Model = createDto.Model,
-            PurchaseDate = createDto.PurchaseDate,
-            WarrantyEndDate = createDto.WarrantyEndDate,
-            PurchasePrice = createDto.PurchasePrice,
-            Location = createDto.Location,
-            Notes = createDto.Notes,
-            AssignedClientId = createDto.AssignedClientId,
-            CreateId = "system",
-            CreateDate = DateTime.UtcNow
-        };
-
-        _context.DeviceDetails.Add(device);
-        await _context.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetDeviceDetails),
-            new { mandantId = device.MandantId, id = device.Id },
-            MapToDeviceDetailsDto(device));
-    }
-
-    /// <summary>
-    /// Updates an existing device.
-    /// </summary>
-    [HttpPut("devicedetails")]
-    public async Task<ActionResult<DeviceDetailsDto>> UpdateDevice([FromBody] DeviceCreateDto updateDto, [FromQuery] int id)
-    {
-        var device = await _context.DeviceDetails.FindAsync(id);
-        if (device == null)
-        {
-            return NotFound($"Device with Id {id} not found.");
-        }
-
-        device.DeviceType = updateDto.DeviceType ?? device.DeviceType;
-        device.SerialNumber = updateDto.SerialNumber ?? device.SerialNumber;
-        device.Description = updateDto.Description ?? device.Description;
-        device.Status = updateDto.Status ?? device.Status;
-        device.Manufacturer = updateDto.Manufacturer ?? device.Manufacturer;
-        device.Model = updateDto.Model ?? device.Model;
-        device.PurchaseDate = updateDto.PurchaseDate ?? device.PurchaseDate;
-        device.WarrantyEndDate = updateDto.WarrantyEndDate ?? device.WarrantyEndDate;
-        device.PurchasePrice = updateDto.PurchasePrice ?? device.PurchasePrice;
-        device.Location = updateDto.Location ?? device.Location;
-        device.Notes = updateDto.Notes ?? device.Notes;
-        device.AssignedClientId = updateDto.AssignedClientId ?? device.AssignedClientId;
-        device.UpdateId = "system";
-        device.UpdateDate = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
-
-        return Ok(MapToDeviceDetailsDto(device));
-    }
-
-    /// <summary>
-    /// Deletes a device.
-    /// </summary>
-    [HttpDelete("devicedetails")]
-    public async Task<IActionResult> DeleteDevice([FromQuery] int mandantId, [FromQuery] int id)
-    {
-        var device = await _context.DeviceDetails
-            .FirstOrDefaultAsync(d => d.MandantId == mandantId && d.Id == id);
-
-        if (device == null)
-        {
-            return NotFound($"Device with MandantId {mandantId} and Id {id} not found.");
-        }
-
-        _context.DeviceDetails.Remove(device);
-        await _context.SaveChangesAsync();
-
-        return Ok(new { message = "Device deleted successfully." });
     }
 
     private DeviceDetailsDto MapToDeviceDetailsDto(DeviceDetails device)

@@ -1,3 +1,12 @@
+// =================================================================================================
+// APP FABRIC - STAGE 2: CORE APPLICATION TRANSFORMATION (Domain Layer)
+// This class is part of the Domain Layer in Clean Architecture. It represents the Address entity.
+//
+// META-DATA:
+//   - Layer: Domain (Entity)
+//   - Responsibility: Define the structure and properties of an Address.
+// =================================================================================================
+
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
